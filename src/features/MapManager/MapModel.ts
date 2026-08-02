@@ -1,23 +1,28 @@
+import { packIndex } from "../../core/types/grid";
 import type { Essence } from "./model/essences/Essence";
+import {
+  emptyChangeSet,
+  type CellChange,
+  type CellChangeSet,
+} from "./model/CellChangeSet";
+import { computeNextGeneration } from "./model/evolution/EvolutionEngine";
+import { LivingCellRegistry } from "./model/LivingCellRegistry";
 import { Tile } from "./model/Tile";
-import type { CellOffset } from "../../core/types/grid";
 import type { TileSnapshot } from "./types";
-
-function cellKey(x: number, y: number): string {
-  return `${x},${y}`;
-}
-
-interface EssenceGeneration {
-  essence: Essence;
-  inputCells: ReadonlySet<string>;
-  aliveCells: ReadonlyArray<CellOffset>;
-}
+import {
+  deadCellVisualState,
+  livingCellVisualState,
+  type CellVisualState,
+  type MapRenderSnapshot,
+} from "./render/types";
 
 export class MapModel {
   private _gridWidth: number;
   private _gridHeight: number;
   private tiles: Tile[][] = [];
+  private readonly registry = new LivingCellRegistry();
   private currentCycle = 0;
+  private renderRevision = 0;
 
   constructor(gridWidth: number, gridHeight: number) {
     this._gridWidth = gridWidth;
@@ -37,6 +42,14 @@ export class MapModel {
     return this.currentCycle;
   }
 
+  getRenderRevision(): number {
+    return this.renderRevision;
+  }
+
+  getLivingCount(): number {
+    return this.registry.size;
+  }
+
   getTile(x: number, y: number): Tile | null {
     if (!this.isInBounds(x, y)) {
       return null;
@@ -48,139 +61,237 @@ export class MapModel {
   getLivingCells(): Tile[] {
     const living: Tile[] = [];
 
-    for (let y = 0; y < this._gridHeight; y++) {
-      for (let x = 0; x < this._gridWidth; x++) {
-        const tile = this.tiles[y][x];
-        if (tile.isAlive()) {
-          living.push(tile);
-        }
+    this.registry.forEach((_index, _essence, x, y) => {
+      const tile = this.getTile(x, y);
+      if (tile?.isAlive()) {
+        living.push(tile);
       }
-    }
+    }, this._gridWidth);
 
     return living;
   }
 
-  clearLivingCells(): void {
-    for (let y = 0; y < this._gridHeight; y++) {
-      for (let x = 0; x < this._gridWidth; x++) {
-        this.tiles[y][x].setAlive(false);
-      }
-    }
+  getLivingSnapshots(): TileSnapshot[] {
+    const snapshots: TileSnapshot[] = [];
+
+    this.registry.forEach((_index, essence, x, y) => {
+      snapshots.push({ x, y, alive: true, essence });
+    }, this._gridWidth);
+
+    return snapshots;
   }
 
-  setLivingCells(cells: TileSnapshot[]): void {
-    this.clearLivingCells();
+  setCellAlive(x: number, y: number, essence: Essence): CellChangeSet {
+    const tile = this.getTile(x, y);
+    if (!tile) {
+      return emptyChangeSet();
+    }
+
+    const index = packIndex(x, y, this._gridWidth);
+    const wasAlive = tile.isAlive();
+    const previousEssence = tile.getEssence();
+
+    tile.setAlive(true, essence);
+    this.registry.set(index, essence);
+    this.renderRevision++;
+
+    if (wasAlive && previousEssence === essence) {
+      return emptyChangeSet();
+    }
+
+    return {
+      changes: [
+        {
+          x,
+          y,
+          alive: true,
+          essence,
+        },
+      ],
+    };
+  }
+
+  placeCells(
+    cells: ReadonlyArray<{ x: number; y: number }>,
+    essence: Essence,
+  ): CellChangeSet {
+    const changes: CellChange[] = [];
+
+    for (const { x, y } of cells) {
+      const tile = this.getTile(x, y);
+      if (!tile) {
+        continue;
+      }
+
+      const index = packIndex(x, y, this._gridWidth);
+      const wasAlive = tile.isAlive();
+      const previousEssence = tile.getEssence();
+
+      tile.setAlive(true, essence);
+      this.registry.set(index, essence);
+
+      if (!wasAlive || previousEssence !== essence) {
+        changes.push({ x, y, alive: true, essence });
+      }
+    }
+
+    if (changes.length > 0) {
+      this.renderRevision++;
+    }
+
+    return { changes };
+  }
+
+  clearLivingCells(): CellChangeSet {
+    const changes: CellChange[] = [];
+
+    this.registry.forEach((_index, _essence, x, y) => {
+      const tile = this.getTile(x, y);
+      tile?.setAlive(false);
+      changes.push({ x, y, alive: false, essence: null });
+    }, this._gridWidth);
+
+    this.registry.clear();
+
+    if (changes.length > 0) {
+      this.renderRevision++;
+    }
+
+    return { changes };
+  }
+
+  setLivingCells(cells: TileSnapshot[]): CellChangeSet {
+    const clearChanges = this.clearLivingCells();
+    const placeChanges: CellChange[] = [];
 
     for (const cell of cells) {
-      const tile = this.getTile(cell.x, cell.y);
-      if (tile && cell.alive && cell.essence) {
-        tile.setAlive(true, cell.essence);
+      if (!cell.alive || !cell.essence) {
+        continue;
       }
+
+      const tile = this.getTile(cell.x, cell.y);
+      if (!tile) {
+        continue;
+      }
+
+      const index = packIndex(cell.x, cell.y, this._gridWidth);
+      tile.setAlive(true, cell.essence);
+      this.registry.set(index, cell.essence);
+      placeChanges.push({
+        x: cell.x,
+        y: cell.y,
+        alive: true,
+        essence: cell.essence,
+      });
     }
+
+    if (placeChanges.length > 0) {
+      this.renderRevision++;
+    }
+
+    return {
+      changes: [...clearChanges.changes, ...placeChanges],
+    };
   }
 
-  step(): void {
+  step(): CellChangeSet {
     this.currentCycle++;
 
-    const livingCells = this.getLivingCells();
-    const groups = this.groupByEssence(livingCells);
-    const nextGenerations: EssenceGeneration[] = [];
+    const living = this.registry.snapshot();
 
-    for (const [essence, tiles] of groups) {
-      const inputCells = new Set(tiles.map((tile) => cellKey(tile.x, tile.y)));
-      const otherEssenceCells = livingCells
-        .filter((tile) => tile.getEssence() !== essence)
-        .map((tile) => ({ x: tile.x, y: tile.y }));
-
-      const result = essence.evolve({
-        gridWidth: this._gridWidth,
-        gridHeight: this._gridHeight,
-        aliveCells: tiles.map((tile) => ({ x: tile.x, y: tile.y })),
-        currentCycle: this.currentCycle,
-        otherEssenceCells,
-      });
-
-      nextGenerations.push({
-        essence,
-        inputCells,
-        aliveCells: result.aliveCells,
-      });
+    if (living.length === 0) {
+      return emptyChangeSet();
     }
 
-    const merged = this.mergeGenerations(livingCells, nextGenerations);
+    const { nextLiving } = computeNextGeneration({
+      bounds: { width: this._gridWidth, height: this._gridHeight },
+      living,
+      currentCycle: this.currentCycle,
+      essenceOrder: this.registry.getEssenceOrder(),
+    });
 
-    this.clearLivingCells();
+    const rawChanges = this.registry.applyNextLiving(
+      nextLiving,
+      this._gridWidth,
+    );
 
-    for (const [key, essence] of merged) {
-      const [x, y] = key.split(",").map(Number);
-      const tile = this.getTile(x, y);
-      if (tile) {
-        tile.setAlive(true, essence);
+    if (rawChanges.length === 0) {
+      return emptyChangeSet();
+    }
+
+    for (const change of rawChanges) {
+      const tile = this.getTile(change.x, change.y);
+      if (!tile) {
+        continue;
+      }
+
+      if (change.nextAlive && change.nextEssence) {
+        tile.setAlive(true, change.nextEssence);
+      } else {
+        tile.setAlive(false);
       }
     }
+
+    this.renderRevision++;
+
+    return {
+      changes: rawChanges.map((change) => ({
+        x: change.x,
+        y: change.y,
+        alive: change.nextAlive,
+        essence: change.nextEssence,
+      })),
+    };
   }
 
-  resize(gridWidth: number, gridHeight: number): void {
+  createRenderSnapshot(cellSize: number): MapRenderSnapshot {
+    const livingCells: CellVisualState[] = [];
+
+    this.registry.forEach((_index, essence, x, y) => {
+      livingCells.push(livingCellVisualState(x, y, essence));
+    }, this._gridWidth);
+
+    return {
+      revision: this.renderRevision,
+      gridWidth: this._gridWidth,
+      gridHeight: this._gridHeight,
+      cellSize,
+      livingCells,
+    };
+  }
+
+  cellChangesToVisualStates(changeSet: CellChangeSet): CellVisualState[] {
+    return changeSet.changes.map((change) =>
+      change.alive && change.essence
+        ? livingCellVisualState(change.x, change.y, change.essence)
+        : deadCellVisualState(change.x, change.y),
+    );
+  }
+
+  resize(gridWidth: number, gridHeight: number): MapRenderSnapshot | null {
     if (gridWidth === this._gridWidth && gridHeight === this._gridHeight) {
-      return;
+      return null;
     }
 
-    const previousLiving = this.getLivingCells().map((tile) =>
-      tile.toSnapshot(),
-    );
+    const previousLiving = this.getLivingSnapshots();
 
     this._gridWidth = gridWidth;
     this._gridHeight = gridHeight;
     this.initGrid();
+    this.registry.clear();
 
-    this.setLivingCells(previousLiving);
-  }
-
-  private mergeGenerations(
-    livingCells: Tile[],
-    nextGenerations: EssenceGeneration[],
-  ): Map<string, Essence> {
-    const merged = new Map<string, Essence>();
-
-    for (const tile of livingCells) {
-      const essence = tile.getEssence();
-      if (!essence) {
-        continue;
-      }
-
-      const generation = nextGenerations.find(
-        (entry) => entry.essence === essence,
-      );
-      if (!generation) {
-        continue;
-      }
-
-      const key = cellKey(tile.x, tile.y);
-      const survives = generation.aliveCells.some(
-        (cell) => cellKey(cell.x, cell.y) === key,
-      );
-
-      if (survives) {
-        merged.set(key, essence);
+    for (const snapshot of previousLiving) {
+      const tile = this.getTile(snapshot.x, snapshot.y);
+      if (tile && snapshot.essence) {
+        const index = packIndex(snapshot.x, snapshot.y, this._gridWidth);
+        tile.setAlive(true, snapshot.essence);
+        this.registry.set(index, snapshot.essence);
       }
     }
 
-    for (const generation of nextGenerations) {
-      for (const { x, y } of generation.aliveCells) {
-        const key = cellKey(x, y);
-        if (merged.has(key)) {
-          continue;
-        }
+    this.renderRevision++;
 
-        if (generation.inputCells.has(key)) {
-          continue;
-        }
-
-        merged.set(key, generation.essence);
-      }
-    }
-
-    return merged;
+    return this.createRenderSnapshot(0);
   }
 
   private initGrid(): void {
@@ -193,23 +304,6 @@ export class MapModel {
       }
       this.tiles.push(row);
     }
-  }
-
-  private groupByEssence(tiles: Tile[]): Map<Essence, Tile[]> {
-    const groups = new Map<Essence, Tile[]>();
-
-    for (const tile of tiles) {
-      const essence = tile.getEssence();
-      if (!essence) {
-        continue;
-      }
-
-      const group = groups.get(essence) ?? [];
-      group.push(tile);
-      groups.set(essence, group);
-    }
-
-    return groups;
   }
 
   private isInBounds(x: number, y: number): boolean {

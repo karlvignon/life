@@ -5,8 +5,9 @@ import {
   Rectangle,
   Text,
 } from "pixi.js";
-import type { Placeable } from "../MapManager/main";
+import type { Essence } from "../MapManager/main";
 import { CellCreatorEventManager } from "./CellCreatorEventManager";
+import type { PatternDefinition, PatternId } from "./types";
 
 const BUTTON_PADDING = 8;
 const BUTTON_BACKGROUND = 0x111827;
@@ -18,26 +19,27 @@ const PREVIEW_CELL_SIZE = 3;
 const PREVIEW_CELL_GAP = 1;
 
 export class CreateCellButtonView extends Container {
-  private readonly placeable: Placeable;
+  private readonly definition: PatternDefinition;
   private readonly eventManager: CellCreatorEventManager;
   private readonly background: Graphics;
+  private readonly previewCells: Graphics[] = [];
   private readonly buttonWidth: number;
   private readonly buttonHeight: number;
   private active = false;
 
   constructor(
     eventManager: CellCreatorEventManager,
-    placeable: Placeable,
-    label: string,
+    definition: PatternDefinition,
+    essence: Essence,
   ) {
     super();
 
     this.eventManager = eventManager;
-    this.placeable = placeable;
+    this.definition = definition;
 
     this.background = new Graphics();
     const labelText = new Text({
-      text: label,
+      text: definition.label,
       style: {
         fill: TEXT_COLOR,
         fontFamily: "monospace",
@@ -45,7 +47,7 @@ export class CreateCellButtonView extends Container {
       },
     });
 
-    const preview = this.createMiniPreview(placeable);
+    const preview = this.createMiniPreview(essence);
     preview.position.set(BUTTON_PADDING, BUTTON_PADDING);
     labelText.position.set(BUTTON_PADDING, BUTTON_PADDING + preview.height + 4);
 
@@ -64,8 +66,17 @@ export class CreateCellButtonView extends Container {
     this.on("pointerdown", this.onPointerDown);
   }
 
-  getPlaceable(): Placeable {
-    return this.placeable;
+  getPatternId(): PatternId {
+    return this.definition.id;
+  }
+
+  syncEssence(essence: Essence): void {
+    for (const graphic of this.previewCells) {
+      graphic.clear();
+      graphic
+        .rect(0, 0, PREVIEW_CELL_SIZE, PREVIEW_CELL_SIZE)
+        .fill(essence.color);
+    }
   }
 
   get width(): number {
@@ -88,21 +99,25 @@ export class CreateCellButtonView extends Container {
 
   private readonly onPointerDown = (event: FederatedPointerEvent): void => {
     event.stopPropagation();
-    this.eventManager.emit("placeable:select", { placeable: this.placeable });
+    this.eventManager.emit("pattern:select", {
+      patternId: this.definition.id,
+    });
   };
 
-  private createMiniPreview(placeable: Placeable): Container {
+  private createMiniPreview(essence: Essence): Container {
     const preview = new Container();
-    const cells = placeable.getPattern().getCells();
-    const color = placeable.getEssence().color;
+    const cells = this.definition.createPattern(essence).getCells();
 
     for (const cell of cells) {
       const graphic = new Graphics();
-      graphic.rect(0, 0, PREVIEW_CELL_SIZE, PREVIEW_CELL_SIZE).fill(color);
+      graphic
+        .rect(0, 0, PREVIEW_CELL_SIZE, PREVIEW_CELL_SIZE)
+        .fill(essence.color);
       graphic.position.set(
         cell.x * (PREVIEW_CELL_SIZE + PREVIEW_CELL_GAP),
         cell.y * (PREVIEW_CELL_SIZE + PREVIEW_CELL_GAP),
       );
+      this.previewCells.push(graphic);
       preview.addChild(graphic);
     }
 

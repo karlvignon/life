@@ -6,29 +6,32 @@ import {
 } from "pixi.js";
 import type { EventBus } from "../../core/EventBus";
 import type { GameEventMap } from "../../core/types/gameEvents";
-import { Placeable, type MapManager } from "../MapManager/main";
+import type { MapManager } from "../MapManager/main";
 import { CellCreatorEventManager } from "./CellCreatorEventManager";
 import { CellCreatorModel } from "./CellCreatorModel";
 import {
   createToolbarButtons,
-  isCreateCellButtonView,
+  DEFAULT_ESSENCE_DEFINITION,
+  ESSENCE_DEFINITIONS,
+  getEssenceDefinition,
+  getPatternDefinition,
 } from "./CreateCellButtons";
 import { CreateButtonsView } from "./CreateButtonsView";
+import { EssenceSelectorView } from "./EssenceSelectorView";
 import { PlaceablePreviewView } from "./PlaceablePreviewView";
-
-type MapView = NonNullable<ReturnType<MapManager["getMapView"]>>;
 
 export class CellCreatorManager {
   private readonly app: Application;
   private readonly gameEventBus: EventBus;
   private readonly mapManager: MapManager;
   private readonly uiRootsToIgnore: Container[] = [];
-  private readonly model = new CellCreatorModel();
+  private readonly model = new CellCreatorModel(DEFAULT_ESSENCE_DEFINITION);
   private readonly eventManager = new CellCreatorEventManager();
   private readonly uiRoot: Container;
   private readonly view: CreateButtonsView;
+  private readonly essenceSelectorView: EssenceSelectorView;
   private readonly previewView = new PlaceablePreviewView();
-  private boundMapView: MapView | null = null;
+  private boundMapView: Container | null = null;
 
   private readonly onResize = (): void => {
     this.layout();
@@ -61,9 +64,17 @@ export class CellCreatorManager {
     this.app.stage.addChild(this.uiRoot);
     this.uiRootsToIgnore.push(this.uiRoot);
 
-    const buttons = createToolbarButtons(this.eventManager);
+    const buttons = createToolbarButtons(
+      this.eventManager,
+      this.model.getSelectedEssence(),
+    );
     this.view = new CreateButtonsView(buttons);
-    this.uiRoot.addChild(this.view);
+    this.essenceSelectorView = new EssenceSelectorView(
+      ESSENCE_DEFINITIONS,
+      this.eventManager,
+    );
+    this.uiRoot.addChild(this.view, this.essenceSelectorView);
+    this.syncSelectionViews();
 
     this.bindEvents();
     this.layout();
@@ -79,19 +90,33 @@ export class CellCreatorManager {
     return this.uiRoot;
   }
 
+  needsRender(): boolean {
+    return this.model.getSelectedPlaceable() !== null;
+  }
+
   render(): void {
     const mapView = this.mapManager.getMapView();
-    if (!mapView) {
+    const overlay = this.mapManager.getOverlayLayer();
+
+    if (!mapView || !overlay) {
       return;
     }
 
     this.ensureMapViewEvents(mapView);
 
+    if (!this.model.getSelectedPlaceable()) {
+      if (this.previewView.parent) {
+        overlay.removeChild(this.previewView);
+      }
+      this.previewView.visible = false;
+      return;
+    }
+
     const pointer = this.app.renderer.events.pointer.global;
     this.updatePreviewOrigin(pointer.x, pointer.y);
 
-    if (this.previewView.parent !== mapView) {
-      mapView.addChild(this.previewView);
+    if (this.previewView.parent !== overlay) {
+      overlay.addChild(this.previewView);
     }
 
     const cellSize = this.mapManager.getCellSize();
@@ -105,34 +130,46 @@ export class CellCreatorManager {
 
     this.previewView.destroy();
     this.view.destroy({ children: true });
+    this.essenceSelectorView.destroy();
     this.uiRoot.removeChild(this.view);
+    this.uiRoot.removeChild(this.essenceSelectorView);
     this.uiRoot.destroy({ children: true });
     this.app.stage.removeChild(this.uiRoot);
   }
 
   private bindEvents(): void {
-    this.eventManager.on("placeable:select", ({ placeable }) => {
-      const current = this.model.getSelectedPlaceable();
-      const next =
-        current?.getPattern() === placeable.getPattern() ? null : placeable;
+    this.eventManager.on("pattern:select", ({ patternId }) => {
+      const definition = getPatternDefinition(patternId);
+      if (!definition) {
+        return;
+      }
 
-      this.setSelectedPlaceable(next);
+      this.model.toggleSelectedPattern(definition);
+      this.publishSelectedPlaceable();
+      this.syncSelectionViews();
+    });
+
+    this.eventManager.on("essence:select", ({ essenceId }) => {
+      const definition = getEssenceDefinition(essenceId);
+      if (!definition) {
+        return;
+      }
+
+      this.model.setSelectedEssence(definition);
+      this.view.syncEssence(this.model.getSelectedEssence());
+      this.publishSelectedPlaceable();
+      this.syncSelectionViews();
     });
 
     this.eventManager.on("map:clear", () => {
       this.mapManager.clearMap();
-      this.setSelectedPlaceable(null);
+      this.model.clearSelectedPattern();
+      this.publishSelectedPlaceable();
+      this.syncSelectionViews();
     });
-
-    this.gameEventBus.on<GameEventMap["game:placeable-selected"]>(
-      "game:placeable-selected",
-      ({ placeable }) => {
-        this.syncButtonActiveState(placeable);
-      },
-    );
   }
 
-  private ensureMapViewEvents(mapView: MapView): void {
+  private ensureMapViewEvents(mapView: Container): void {
     if (mapView === this.boundMapView) {
       return;
     }
@@ -152,28 +189,18 @@ export class CellCreatorManager {
     this.boundMapView = null;
   }
 
-  private setSelectedPlaceable(placeable: Placeable | null): void {
-    this.model.setSelectedPlaceable(placeable);
-
+  private publishSelectedPlaceable(): void {
     this.gameEventBus.emit<GameEventMap["game:placeable-selected"]>(
       "game:placeable-selected",
-      { placeable },
+      { placeable: this.model.getSelectedPlaceable() },
     );
-
-    this.syncButtonActiveState(placeable);
   }
 
-  private syncButtonActiveState(selected: Placeable | null): void {
-    for (const button of this.view.getButtons()) {
-      if (!isCreateCellButtonView(button)) {
-        continue;
-      }
-
-      const isActive =
-        selected !== null &&
-        button.getPlaceable().getPattern() === selected.getPattern();
-      button.setActive(isActive);
-    }
+  private syncSelectionViews(): void {
+    this.view.syncSelectedPattern(this.model.getSelectedPatternId());
+    this.essenceSelectorView.syncSelectedEssence(
+      this.model.getSelectedEssenceDefinition().id,
+    );
   }
 
   private updatePreviewOrigin(globalX: number, globalY: number): void {
@@ -204,6 +231,7 @@ export class CellCreatorManager {
 
     this.uiRoot.hitArea = new Rectangle(0, 0, width, height);
     this.view.layoutWithinParent({ width, height });
+    this.essenceSelectorView.layoutWithinParent({ width, height });
     this.app.stage.addChild(this.uiRoot);
   }
 }

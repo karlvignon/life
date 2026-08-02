@@ -1,45 +1,53 @@
 import { describe, expect, it } from "vitest";
+import { packIndex } from "../../core/types/grid";
 import { Builder } from "./model/Builder";
 import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
-import { MapModel } from "./MapModel";
-import { Placeable } from "./model/Placeable";
 import {
   DEFAULT_STATIC_COLOR,
   StaticEssence,
 } from "./model/essences/StaticEssence";
+import { MapModel } from "./MapModel";
+import { Placeable } from "./model/Placeable";
 import { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
-import { Tree } from "./model/patterns/Tree";
+import { SingleCellPattern } from "./model/patterns/SingleCellPattern";
 
 describe("StaticEssence", () => {
   const essence = new StaticEssence();
+  const bounds = { width: 5, height: 5 };
 
   it("uses the default orange color", () => {
     expect(essence.color).toBe(DEFAULT_STATIC_COLOR);
   });
 
   it("keeps cells unchanged across evolution steps", () => {
+    const aliveIndices = new Set([packIndex(2, 2, bounds.width)]);
     const input = {
-      gridWidth: 5,
-      gridHeight: 5,
-      aliveCells: [{ x: 2, y: 2 }],
+      bounds,
+      aliveIndices,
       currentCycle: 1,
-      otherEssenceCells: [],
+      globalLivingIndices: aliveIndices,
     };
 
     const first = essence.evolve(input);
-    const second = essence.evolve({ ...input, aliveCells: first.aliveCells });
+    const second = essence.evolve({
+      ...input,
+      aliveIndices: new Set(first.aliveIndices),
+    });
 
-    expect(first.aliveCells).toEqual([{ x: 2, y: 2 }]);
-    expect(second.aliveCells).toEqual([{ x: 2, y: 2 }]);
+    expect(first.aliveIndices).toEqual([packIndex(2, 2, bounds.width)]);
+    expect(second.aliveIndices).toEqual([packIndex(2, 2, bounds.width)]);
   });
 
-  it("does not evolve a placed Tree while Conway cells change nearby", () => {
+  it("does not evolve a placed static cell while Conway cells change nearby", () => {
     const staticEssence = new StaticEssence();
     const conwayEssence = new GameOfLifeEssence();
     const builder = new Builder();
     const model = new MapModel(10, 10);
 
-    builder.place(model, new Placeable(new Tree(staticEssence), 1, 1));
+    builder.place(
+      model,
+      new Placeable(new SingleCellPattern(staticEssence), 1, 1),
+    );
     builder.place(
       model,
       new Placeable(new BlinkerOscillator(conwayEssence), 5, 1),

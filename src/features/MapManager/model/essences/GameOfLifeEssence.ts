@@ -1,20 +1,16 @@
+import type { CellIndex, GridBounds } from "../../../../core/types/grid";
+import { packIndex } from "../../../../core/types/grid";
+import {
+  countMooreNeighborsInSet,
+  forEachMooreNeighborIndex,
+} from "../../../../shared/grid/neighbors";
 import type {
   Essence,
   EssenceEvolutionInput,
   EssenceEvolutionResult,
 } from "./Essence";
-import type { CellOffset } from "../../../../core/types/grid";
 
 export const DEFAULT_GAME_OF_LIFE_COLOR = 0x00ff88;
-
-function cellKey(x: number, y: number): string {
-  return `${x},${y}`;
-}
-
-function parseCellKey(key: string): CellOffset {
-  const [x, y] = key.split(",").map(Number);
-  return { x, y };
-}
 
 /** Règles Conway B3/S23 — chaque groupe évolue indépendamment. */
 export class GameOfLifeEssence implements Essence {
@@ -25,39 +21,32 @@ export class GameOfLifeEssence implements Essence {
   }
 
   evolve(input: EssenceEvolutionInput): EssenceEvolutionResult {
-    const { gridWidth, gridHeight, aliveCells } = input;
-    const aliveSet = new Set(aliveCells.map(({ x, y }) => cellKey(x, y)));
+    const { bounds, aliveIndices } = input;
+    const candidates = new Set<CellIndex>();
 
-    const candidates = new Set<string>();
-    for (const { x, y } of aliveCells) {
-      candidates.add(cellKey(x, y));
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const nx = x + dx;
-          const ny = y + dy;
-          if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight) {
-            candidates.add(cellKey(nx, ny));
-          }
-        }
-      }
+    for (const index of aliveIndices) {
+      candidates.add(index);
+      forEachMooreNeighborIndex(index, bounds, (neighborIndex) => {
+        candidates.add(neighborIndex);
+      });
     }
 
-    const nextAlive: CellOffset[] = [];
-    for (const key of candidates) {
-      const { x, y } = parseCellKey(key);
-      const neighbors = countAliveNeighbors(x, y, aliveSet);
-      const alive = aliveSet.has(key);
+    const nextAlive: CellIndex[] = [];
+
+    for (const index of candidates) {
+      const neighbors = countMooreNeighborsInSet(index, aliveIndices, bounds);
+      const alive = aliveIndices.has(index);
 
       const shouldLive = alive
         ? this.shouldSurvive(neighbors)
         : this.shouldBirth(neighbors);
 
       if (shouldLive) {
-        nextAlive.push({ x, y });
+        nextAlive.push(index);
       }
     }
 
-    return { aliveCells: nextAlive };
+    return { aliveIndices: nextAlive };
   }
 
   protected shouldSurvive(neighbors: number): boolean {
@@ -69,24 +58,32 @@ export class GameOfLifeEssence implements Essence {
   }
 }
 
-function countAliveNeighbors(
-  x: number,
-  y: number,
-  aliveSet: ReadonlySet<string>,
-): number {
-  let count = 0;
+/** Helper for tests — convert coordinates to evolution input. */
+export function makeGameOfLifeInput(
+  bounds: GridBounds,
+  alive: ReadonlyArray<{ x: number; y: number }>,
+  overrides: Partial<EssenceEvolutionInput> = {},
+): EssenceEvolutionInput {
+  const aliveIndices = new Set(
+    alive.map(({ x, y }) => packIndex(x, y, bounds.width)),
+  );
 
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      if (dx === 0 && dy === 0) {
-        continue;
-      }
+  return {
+    bounds,
+    aliveIndices,
+    globalLivingIndices: overrides.globalLivingIndices ?? aliveIndices,
+    currentCycle: overrides.currentCycle ?? 1,
+    ...overrides,
+  };
+}
 
-      if (aliveSet.has(cellKey(x + dx, y + dy))) {
-        count++;
-      }
-    }
-  }
-
-  return count;
+/** Helper for tests — unpack result indices to coordinates. */
+export function unpackAliveCells(
+  indices: ReadonlyArray<CellIndex>,
+  width: number,
+): Array<{ x: number; y: number }> {
+  return indices.map((index) => ({
+    x: index % width,
+    y: Math.floor(index / width),
+  }));
 }

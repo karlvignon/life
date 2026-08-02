@@ -57,6 +57,19 @@ describe("MapModel", () => {
     ]);
   });
 
+  it("returns a small delta for blinker steps", () => {
+    const model = new MapModel(5, 5);
+    builder.build(
+      model,
+      Placeable.centerOnGrid(new BlinkerOscillator(essence), 5, 5),
+    );
+
+    const delta = model.step();
+
+    expect(delta.changes.length).toBeLessThanOrEqual(4);
+    expect(delta.changes.length).toBeGreaterThan(0);
+  });
+
   it("assigns the triggering essence to born cells", () => {
     const model = new MapModel(5, 5);
     const placeable = Placeable.centerOnGrid(
@@ -135,7 +148,7 @@ describe("MapModel", () => {
       { x: 5, y: 3 },
       { x: 4, y: 4 },
     ]) {
-      model.getTile(x, y)!.setAlive(true, essenceA);
+      model.setCellAlive(x, y, essenceA);
     }
 
     for (const { x, y } of [
@@ -143,7 +156,7 @@ describe("MapModel", () => {
       { x: 6, y: 4 },
       { x: 5, y: 5 },
     ]) {
-      model.getTile(x, y)!.setAlive(true, essenceB);
+      model.setCellAlive(x, y, essenceB);
     }
 
     model.step();
@@ -198,7 +211,7 @@ describe("MapModel", () => {
       { x: 3, y: 2 },
       { x: 2, y: 3 },
     ]) {
-      model.getTile(x, y)!.setAlive(true, mushroomEssence);
+      model.setCellAlive(x, y, mushroomEssence);
     }
 
     for (let i = 0; i < 49; i++) {
@@ -219,13 +232,13 @@ describe("MapModel", () => {
     const enemyEssence = new StaticEssence();
     const model = new MapModel(7, 7);
 
-    model.getTile(3, 3)!.setAlive(true, mushroomEssence);
+    model.setCellAlive(3, 3, mushroomEssence);
     for (const { x, y } of [
       { x: 2, y: 2 },
       { x: 3, y: 2 },
       { x: 2, y: 3 },
     ]) {
-      model.getTile(x, y)!.setAlive(true, enemyEssence);
+      model.setCellAlive(x, y, enemyEssence);
     }
 
     for (let i = 0; i < 50; i++) {
@@ -250,5 +263,13 @@ describe("MapModel", () => {
       expect(tile.getEssence()).toBe(mushroomEssence);
       expect(tile.getEssence()?.color).toBe(DEFAULT_MUSHROOM_COLOR);
     }
+  });
+
+  it("tracks living count without scanning the full grid", () => {
+    const model = new MapModel(100, 100);
+    model.setCellAlive(50, 50, essence);
+
+    expect(model.getLivingCount()).toBe(1);
+    expect(model.getLivingCells()).toHaveLength(1);
   });
 });

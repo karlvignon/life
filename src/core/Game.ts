@@ -55,8 +55,14 @@ export class Game {
   }
 
   private render(): void {
-    this.mapManager.render();
+    if (
+      this.mapManager.needsRender() ||
+      this.cellCreatorManager.needsRender()
+    ) {
+      this.mapManager.render();
+      this.cellCreatorManager.render();
+    }
+
     this.gameOptionsManager.render();
-    this.cellCreatorManager.render();
   }
 }

@@ -1,17 +1,17 @@
-import type { CellOffset } from "../../../../core/types/grid";
+import type { CellIndex, GridBounds } from "../../../../core/types/grid";
 
 export interface EssenceEvolutionInput {
-  gridWidth: number;
-  gridHeight: number;
-  aliveCells: ReadonlyArray<CellOffset>;
+  bounds: GridBounds;
+  /** Cell indices alive in this essence group. */
+  aliveIndices: ReadonlySet<CellIndex>;
   /** Numéro du cycle courant (1-based, incrémenté à chaque step). */
   currentCycle: number;
-  /** Positions vivantes appartenant à d'autres essences. */
-  otherEssenceCells: ReadonlyArray<CellOffset>;
+  /** All living cell indices on the grid (all essences). */
+  globalLivingIndices: ReadonlySet<CellIndex>;
 }
 
 export interface EssenceEvolutionResult {
-  aliveCells: ReadonlyArray<CellOffset>;
+  aliveIndices: ReadonlyArray<CellIndex>;
 }
 
 /** Contrat pur d'évolution d'un groupe de cellules dans les bornes de la grille. */

@@ -1,92 +1,112 @@
 import {
   BlinkerOscillator,
-  GenesisSpaceship,
   GameOfLifeEssence,
+  GenesisSpaceship,
   GliderSpaceship,
-  GosperGliderGun,
   HighLifeEssence,
   HighLifeReplicator,
   LightweightSpaceship,
   MiddleweightSpaceship,
   MushroomEssence,
-  Placeable,
-  Puffer1,
-  Puffer2,
-  SimkinGliderGun,
   SingleCellPattern,
   StaticEssence,
   ToadOscillator,
-  Tree,
-  type Pattern,
+  type Essence,
 } from "../MapManager/main";
 import type { CellCreatorEventManager } from "./CellCreatorEventManager";
 import { ClearButtonView } from "./ClearButtonView";
 import { CreateCellButtonView } from "./CreateCellButtonView";
-
-interface PatternButtonDefinition {
-  label: string;
-  pattern: Pattern;
-}
+import type { EssenceDefinition, PatternDefinition, PatternId } from "./types";
 
 export type ToolbarButton = CreateCellButtonView | ClearButtonView;
 
-function buildGameOfLifePatternButtonDefinitions(): PatternButtonDefinition[] {
-  const essence = new MushroomEssence();
+export const ESSENCE_DEFINITIONS: ReadonlyArray<EssenceDefinition> = [
+  {
+    id: "game-of-life",
+    label: "Conway",
+    essence: new GameOfLifeEssence(),
+  },
+  {
+    id: "high-life",
+    label: "HighLife",
+    essence: new HighLifeEssence(),
+  },
+  {
+    id: "static",
+    label: "Static",
+    essence: new StaticEssence(),
+  },
+  {
+    id: "mushroom",
+    label: "Mushroom",
+    essence: new MushroomEssence(),
+  },
+];
 
-  return [
-    { label: "Genesis", pattern: new GenesisSpaceship(essence) },
-    { label: "Glider", pattern: new GliderSpaceship(essence) },
-    { label: "LWSS", pattern: new LightweightSpaceship(essence) },
-    { label: "MWSS", pattern: new MiddleweightSpaceship(essence) },
-    { label: "Blinker", pattern: new BlinkerOscillator(essence) },
-    { label: "Toad", pattern: new ToadOscillator(essence) },
-    { label: "Puffer 1", pattern: new Puffer1(essence) },
-    { label: "Puffer 2", pattern: new Puffer2(essence) },
-    { label: "Gosper", pattern: new GosperGliderGun(essence) },
-    { label: "Simkin", pattern: new SimkinGliderGun(essence) },
-  ];
+export const DEFAULT_ESSENCE_DEFINITION = ESSENCE_DEFINITIONS[0]!;
+
+export const PATTERN_DEFINITIONS: ReadonlyArray<PatternDefinition> = [
+  {
+    id: "genesis",
+    label: "Genesis",
+    createPattern: (essence) => new GenesisSpaceship(essence),
+  },
+  {
+    id: "glider",
+    label: "Glider",
+    createPattern: (essence) => new GliderSpaceship(essence),
+  },
+  {
+    id: "lwss",
+    label: "LWSS",
+    createPattern: (essence) => new LightweightSpaceship(essence),
+  },
+  {
+    id: "mwss",
+    label: "MWSS",
+    createPattern: (essence) => new MiddleweightSpaceship(essence),
+  },
+  {
+    id: "blinker",
+    label: "Blinker",
+    createPattern: (essence) => new BlinkerOscillator(essence),
+  },
+  {
+    id: "toad",
+    label: "Toad",
+    createPattern: (essence) => new ToadOscillator(essence),
+  },
+  {
+    id: "replicator",
+    label: "Replicator",
+    createPattern: (essence) => new HighLifeReplicator(essence),
+  },
+  {
+    id: "cell",
+    label: "Cell",
+    createPattern: (essence) => new SingleCellPattern(essence),
+  },
+];
+
+export function getEssenceDefinition(
+  essenceId: EssenceDefinition["id"],
+): EssenceDefinition | undefined {
+  return ESSENCE_DEFINITIONS.find(({ id }) => id === essenceId);
 }
 
-function buildHighLifePatternButtonDefinitions(): PatternButtonDefinition[] {
-  const highLifeEssence = new HighLifeEssence();
-
-  return [
-    {
-      label: "Replicator",
-      pattern: new HighLifeReplicator(highLifeEssence),
-    },
-  ];
-}
-
-function buildStaticPatternButtonDefinitions(): PatternButtonDefinition[] {
-  const staticEssence = new StaticEssence();
-
-  return [{ label: "Tree", pattern: new Tree(staticEssence) }];
-}
-
-function buildMushroomPatternButtonDefinitions(): PatternButtonDefinition[] {
-  const mushroomEssence = new MushroomEssence();
-
-  return [
-    { label: "Mushroom", pattern: new SingleCellPattern(mushroomEssence) },
-  ];
+export function getPatternDefinition(
+  patternId: PatternId,
+): PatternDefinition | undefined {
+  return PATTERN_DEFINITIONS.find(({ id }) => id === patternId);
 }
 
 export function createToolbarButtons(
   eventManager: CellCreatorEventManager,
+  selectedEssence: Essence,
 ): ToolbarButton[] {
-  const patternButtons = [
-    ...buildGameOfLifePatternButtonDefinitions(),
-    ...buildHighLifePatternButtonDefinitions(),
-    ...buildStaticPatternButtonDefinitions(),
-    ...buildMushroomPatternButtonDefinitions(),
-  ].map(
-    ({ label, pattern }) =>
-      new CreateCellButtonView(
-        eventManager,
-        new Placeable(pattern, 0, 0),
-        label,
-      ),
+  const patternButtons = PATTERN_DEFINITIONS.map(
+    (definition) =>
+      new CreateCellButtonView(eventManager, definition, selectedEssence),
   );
 
   return [...patternButtons, new ClearButtonView(eventManager)];

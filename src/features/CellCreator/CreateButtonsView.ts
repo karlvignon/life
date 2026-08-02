@@ -1,6 +1,9 @@
 import { Container } from "pixi.js";
+import type { Essence } from "../MapManager/main";
 import type { ToolbarButton } from "./CreateCellButtons";
+import { isCreateCellButtonView } from "./CreateCellButtons";
 import type { CreateButtonsUiLayoutConfig, ParentLayoutBounds } from "./types";
+import type { PatternId } from "./types";
 import { DEFAULT_CREATE_BUTTONS_UI_LAYOUT } from "./types";
 
 export class CreateButtonsView extends Container {
@@ -26,6 +29,22 @@ export class CreateButtonsView extends Container {
 
   getButtons(): ReadonlyArray<ToolbarButton> {
     return this.buttons;
+  }
+
+  syncEssence(essence: Essence): void {
+    for (const button of this.buttons) {
+      if (isCreateCellButtonView(button)) {
+        button.syncEssence(essence);
+      }
+    }
+  }
+
+  syncSelectedPattern(selectedPatternId: PatternId | null): void {
+    for (const button of this.buttons) {
+      if (isCreateCellButtonView(button)) {
+        button.setActive(button.getPatternId() === selectedPatternId);
+      }
+    }
   }
 
   layoutWithinParent(bounds: ParentLayoutBounds): void {

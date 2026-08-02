@@ -4,10 +4,12 @@ import { CellCreatorManager } from "../features/CellCreator/main";
 import { GameOptionsManager } from "../features/GameOptions/main";
 import { MapManager, type MapConfig } from "../features/MapManager/main";
 import type { GameOptionsConfig } from "../features/GameOptions/main";
+import { DevUIManager, type DevOptions } from "../features/DevUI/main";
 
 export interface GameConfig {
   map?: MapConfig;
   gameOptions?: GameOptionsConfig;
+  devOptions?: DevOptions;
 }
 
 export class Game {
@@ -16,6 +18,7 @@ export class Game {
   private readonly mapManager: MapManager;
   private readonly gameOptionsManager: GameOptionsManager;
   private readonly cellCreatorManager: CellCreatorManager;
+  private readonly devUIManager: DevUIManager | null;
 
   constructor(app: Application, config: GameConfig) {
     this.app = app;
@@ -35,15 +38,22 @@ export class Game {
     this.cellCreatorManager.registerUiRootToIgnore(
       this.gameOptionsManager.getUiRoot(),
     );
+    this.devUIManager = config.devOptions?.display.devUi
+      ? new DevUIManager(app)
+      : null;
 
     this.app.ticker.add((ticker) => {
       this.update(ticker.deltaMS);
+
+      const renderStartedAt = performance.now();
       this.render();
+      this.devUIManager?.recordRenderTime(performance.now() - renderStartedAt);
     });
   }
 
   destroy(): void {
     this.app.ticker.stop();
+    this.devUIManager?.destroy();
     this.mapManager.destroy();
     this.gameOptionsManager.destroy();
     this.cellCreatorManager.destroy();
@@ -52,6 +62,7 @@ export class Game {
 
   private update(dtMs: number): void {
     this.mapManager.update(dtMs);
+    this.devUIManager?.update();
   }
 
   private render(): void {
@@ -64,5 +75,6 @@ export class Game {
     }
 
     this.gameOptionsManager.render();
+    this.devUIManager?.render();
   }
 }

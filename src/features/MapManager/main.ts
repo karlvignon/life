@@ -1,6 +1,13 @@
-import { Application, Container, Rectangle } from "pixi.js";
+import {
+  Application,
+  Container,
+  FederatedPointerEvent,
+  Rectangle,
+} from "pixi.js";
 import type { EventBus } from "../../core/EventBus";
 import type { GameEventMap } from "../../core/types/gameEvents";
+import { mergeChangeSets } from "./model/CellChangeSet";
+import type { CellChangeSet } from "./model/CellChangeSet";
 import { MapEventManager } from "./MapEventManager";
 import { MapModel } from "./MapModel";
 import { MapView } from "./MapView";
@@ -10,7 +17,15 @@ import { Placeable } from "./model/Placeable";
 import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 import { GenesisSpaceship } from "./model/spaceships/GenesisSpaceship";
 import { Spaceship } from "./model/spaceships/Spaceship";
+import { Tile } from "./model/Tile";
+import {
+  mergeRenderDeltas,
+  type MapRenderDelta,
+  type MapRenderUpdate,
+} from "./render/types";
 import { computeGridSize, DEFAULT_CELL_SIZE, type MapConfig } from "./types";
+
+const DEFAULT_MAX_STEPS_PER_FRAME = 10;
 
 export type { MapConfig, TileSnapshot, TileInfoUiLayoutConfig } from "./types";
 export type { CellOffset } from "../../core/types/grid";
@@ -37,13 +52,8 @@ export {
 export { Pattern } from "./model/patterns/Pattern";
 export { RlePattern } from "./model/patterns/RlePattern";
 export { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
-export { GosperGliderGun } from "./model/patterns/GosperGliderGun";
 export { HighLifeReplicator } from "./model/patterns/HighLifeReplicator";
-export { Puffer1 } from "./model/patterns/Puffer1";
-export { Puffer2 } from "./model/patterns/Puffer2";
-export { SimkinGliderGun } from "./model/patterns/SimkinGliderGun";
 export { ToadOscillator } from "./model/patterns/ToadOscillator";
-export { Tree } from "./model/patterns/Tree";
 export { SingleCellPattern } from "./model/patterns/SingleCellPattern";
 export { Spaceship } from "./model/spaceships/Spaceship";
 export { GenesisSpaceship } from "./model/spaceships/GenesisSpaceship";
@@ -57,6 +67,7 @@ export class MapManager {
   private readonly uiRoot: Container;
   private readonly cellSize: number;
   private readonly initialSpaceship: Spaceship;
+  private readonly maxStepsPerFrame: number;
   private readonly builder = new Builder();
   private readonly eventManager = new MapEventManager();
 
@@ -68,6 +79,11 @@ export class MapManager {
   private stepsPerSecond = 0;
   private evolutionAccumulatorMs = 0;
 
+  private renderDirty = false;
+  private pendingUpdate: MapRenderUpdate | null = null;
+  private pendingDelta: MapRenderDelta | null = null;
+  private lastHoveredTile: Tile | null = null;
+
   private readonly onResize = (): void => {
     this.layout();
   };
@@ -76,11 +92,13 @@ export class MapManager {
     app: Application,
     config: MapConfig = {},
     gameEventBus: EventBus | null = null,
+    maxStepsPerFrame = DEFAULT_MAX_STEPS_PER_FRAME,
   ) {
     this.app = app;
     this.stage = app.stage;
     this.gameEventBus = gameEventBus;
     this.cellSize = config.cellSize ?? DEFAULT_CELL_SIZE;
+    this.maxStepsPerFrame = maxStepsPerFrame;
     const defaultEssence = config.defaultEssence ?? new GameOfLifeEssence();
     this.initialSpaceship =
       config.initialSpaceship ?? new GenesisSpaceship(defaultEssence);
@@ -109,14 +127,41 @@ export class MapManager {
     const stepIntervalMs = 1000 / this.stepsPerSecond;
     this.evolutionAccumulatorMs += dtMs;
 
-    while (this.evolutionAccumulatorMs >= stepIntervalMs) {
-      this.model.step();
+    let stepsThisFrame = 0;
+    let frameChanges: CellChangeSet | null = null;
+
+    while (
+      this.evolutionAccumulatorMs >= stepIntervalMs &&
+      stepsThisFrame < this.maxStepsPerFrame
+    ) {
+      const stepDelta = this.model.step();
+      frameChanges = mergeChangeSets(frameChanges, stepDelta);
       this.evolutionAccumulatorMs -= stepIntervalMs;
+      stepsThisFrame++;
+    }
+
+    if (this.evolutionAccumulatorMs >= stepIntervalMs) {
+      this.evolutionAccumulatorMs = stepIntervalMs;
+    }
+
+    if (frameChanges && frameChanges.changes.length > 0) {
+      this.queueDelta(frameChanges);
     }
   }
 
   render(): void {
-    this.mapView?.syncFromModel();
+    if (!this.renderDirty || !this.mapView || !this.pendingUpdate) {
+      return;
+    }
+
+    this.mapView.applyUpdate(this.pendingUpdate);
+    this.renderDirty = false;
+    this.pendingUpdate = null;
+    this.pendingDelta = null;
+  }
+
+  needsRender(): boolean {
+    return this.renderDirty;
   }
 
   getModel(): MapModel | null {
@@ -125,6 +170,10 @@ export class MapManager {
 
   getMapView(): MapView | null {
     return this.mapView;
+  }
+
+  getOverlayLayer(): Container | null {
+    return this.mapView?.getOverlayLayer() ?? null;
   }
 
   getUiRoot(): Container {
@@ -164,15 +213,22 @@ export class MapManager {
       return;
     }
 
-    this.builder.place(this.model, placeable);
+    const changes = this.builder.place(this.model, placeable);
+    this.queueDelta(changes);
   }
 
   clearMap(): void {
-    this.model?.clearLivingCells();
+    if (!this.model) {
+      return;
+    }
+
+    const changes = this.model.clearLivingCells();
+    this.queueDelta(changes);
   }
 
   destroy(): void {
     window.removeEventListener("resize", this.onResize);
+    this.unbindMapPointerEvents();
     this.eventManager.destroy();
 
     if (this.mapView) {
@@ -206,6 +262,59 @@ export class MapManager {
     );
   }
 
+  private bindMapPointerEvents(): void {
+    if (!this.mapView) {
+      return;
+    }
+
+    this.mapView.eventMode = "static";
+    this.mapView.on("pointermove", this.onMapPointerMove);
+    this.mapView.on("pointerout", this.onMapPointerOut);
+  }
+
+  private unbindMapPointerEvents(): void {
+    if (!this.mapView) {
+      return;
+    }
+
+    this.mapView.off("pointermove", this.onMapPointerMove);
+    this.mapView.off("pointerout", this.onMapPointerOut);
+    this.mapView.eventMode = "passive";
+  }
+
+  private readonly onMapPointerMove = (event: FederatedPointerEvent): void => {
+    if (!this.model) {
+      return;
+    }
+
+    const grid = this.screenToGrid(event.globalX, event.globalY);
+    if (!grid) {
+      this.emitTileLeave();
+      return;
+    }
+
+    const tile = this.model.getTile(grid.x, grid.y);
+    if (!tile || tile === this.lastHoveredTile) {
+      return;
+    }
+
+    this.lastHoveredTile = tile;
+    this.eventManager.emit("tile:hover", tile);
+  };
+
+  private readonly onMapPointerOut = (): void => {
+    this.emitTileLeave();
+  };
+
+  private emitTileLeave(): void {
+    if (!this.lastHoveredTile) {
+      return;
+    }
+
+    this.lastHoveredTile = null;
+    this.eventManager.emit("tile:leave", undefined);
+  }
+
   private layout(): void {
     const { gridWidth, gridHeight } = computeGridSize(
       this.app.screen.width,
@@ -215,16 +324,24 @@ export class MapManager {
 
     if (!this.model) {
       this.model = new MapModel(gridWidth, gridHeight);
-      this.mapView = new MapView(this.model, this.eventManager, this.cellSize);
+      this.mapView = new MapView(this.cellSize);
       this.stage.addChild(this.mapView);
+      this.bindMapPointerEvents();
     } else {
-      this.model.resize(gridWidth, gridHeight);
-      this.mapView?.rebuild();
+      const resizeSnapshot = this.model.resize(gridWidth, gridHeight);
+      if (resizeSnapshot) {
+        this.queueFullSnapshot();
+      }
     }
 
     this.applyInitialCells();
     this.centerMap();
     this.layoutUiRoot();
+
+    if (!this.renderDirty) {
+      this.queueFullSnapshot();
+    }
+
     this.render();
   }
 
@@ -251,7 +368,8 @@ export class MapManager {
       this.model.gridWidth,
       this.model.gridHeight,
     );
-    this.builder.build(this.model, placeable);
+    const changes = this.builder.build(this.model, placeable);
+    this.queueDelta(changes);
 
     this.seeded = true;
   }
@@ -268,5 +386,33 @@ export class MapManager {
       (this.app.screen.width - usedWidth) / 2,
       (this.app.screen.height - usedHeight) / 2,
     );
+  }
+
+  private queueFullSnapshot(): void {
+    if (!this.model) {
+      return;
+    }
+
+    this.pendingUpdate = {
+      kind: "full",
+      snapshot: this.model.createRenderSnapshot(this.cellSize),
+    };
+    this.pendingDelta = null;
+    this.renderDirty = true;
+  }
+
+  private queueDelta(changeSet: CellChangeSet): void {
+    if (!this.model || changeSet.changes.length === 0) {
+      return;
+    }
+
+    const nextDelta: MapRenderDelta = {
+      revision: this.model.getRenderRevision(),
+      changedCells: this.model.cellChangesToVisualStates(changeSet),
+    };
+
+    this.pendingDelta = mergeRenderDeltas(this.pendingDelta, nextDelta);
+    this.pendingUpdate = { kind: "delta", delta: this.pendingDelta };
+    this.renderDirty = true;
   }
 }

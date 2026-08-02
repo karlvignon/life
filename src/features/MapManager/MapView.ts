@@ -1,130 +1,176 @@
 import { Container, Graphics } from "pixi.js";
-import { Hoverable } from "./Hoverable";
-import { MapEventManager } from "./MapEventManager";
-import { MapModel } from "./MapModel";
-import { DEFAULT_GAME_OF_LIFE_COLOR } from "./model/essences/GameOfLifeEssence";
-import { Tile } from "./model/Tile";
-
-const DEAD_CELL_COLOR = 0x1a1a2e;
-const DEAD_CELL_BORDER_COLOR = 0x2a2a3e;
+import {
+  cellToChunk,
+  chunkKey,
+  getChunkCount,
+  CHUNK_SIZE,
+} from "./render/chunkIndex";
+import {
+  DEAD_CELL_BORDER_COLOR,
+  DEAD_CELL_COLOR,
+  type CellVisualState,
+  type MapRenderSnapshot,
+  type MapRenderUpdate,
+} from "./render/types";
 
 export class MapView extends Container {
-  private readonly model: MapModel;
-  private readonly eventManager: MapEventManager;
   readonly cellSize: number;
 
-  private readonly cellGraphics: Graphics[][] = [];
-  private readonly hoverables: Hoverable[][] = [];
+  private readonly backgroundLayer: Graphics;
+  private readonly livingLayer: Container;
+  private readonly overlayLayer: Container;
 
-  constructor(
-    model: MapModel,
-    eventManager: MapEventManager,
-    cellSize: number,
-  ) {
+  private gridWidth = 0;
+  private gridHeight = 0;
+  private lastRevision = -1;
+
+  private readonly livingCells = new Map<string, CellVisualState>();
+  private readonly chunkGraphics = new Map<string, Graphics>();
+
+  constructor(cellSize: number) {
     super();
 
-    this.model = model;
-    this.eventManager = eventManager;
     this.cellSize = cellSize;
+    this.backgroundLayer = new Graphics();
+    this.livingLayer = new Container();
+    this.overlayLayer = new Container();
 
-    this.buildGrid();
-    this.syncFromModel();
+    this.addChild(this.backgroundLayer, this.livingLayer, this.overlayLayer);
   }
 
-  syncFromModel(): void {
-    for (let y = 0; y < this.model.gridHeight; y++) {
-      for (let x = 0; x < this.model.gridWidth; x++) {
-        const tile = this.model.getTile(x, y);
-        if (!tile) {
-          continue;
-        }
-
-        this.drawCell(x, y, tile);
-      }
-    }
+  getOverlayLayer(): Container {
+    return this.overlayLayer;
   }
 
-  rebuild(): void {
-    this.destroyGrid();
-    this.buildGrid();
-    this.syncFromModel();
-  }
-
-  destroyGrid(): void {
-    for (const row of this.hoverables) {
-      for (const hoverable of row) {
-        hoverable.destroy();
-      }
-    }
-
-    for (const row of this.cellGraphics) {
-      for (const graphic of row) {
-        this.removeChild(graphic);
-        graphic.destroy();
-      }
-    }
-
-    this.cellGraphics.length = 0;
-    this.hoverables.length = 0;
-  }
-
-  private buildGrid(): void {
-    for (let y = 0; y < this.model.gridHeight; y++) {
-      this.addRow(y);
-    }
-  }
-
-  private addRow(y: number): void {
-    const graphicsRow: Graphics[] = [];
-    const hoverablesRow: Hoverable[] = [];
-
-    for (let x = 0; x < this.model.gridWidth; x++) {
-      const tile = this.model.getTile(x, y);
-      if (!tile) {
-        continue;
-      }
-
-      const graphic = this.createCellGraphic(x, y);
-      const hoverable = new Hoverable(
-        graphic,
-        tile,
-        this.eventManager,
-        this.cellSize,
-      );
-      hoverable.bind();
-
-      graphicsRow.push(graphic);
-      hoverablesRow.push(hoverable);
-    }
-
-    this.cellGraphics.push(graphicsRow);
-    this.hoverables.push(hoverablesRow);
-  }
-
-  private createCellGraphic(x: number, y: number): Graphics {
-    const graphic = new Graphics();
-    graphic.position.set(x * this.cellSize, y * this.cellSize);
-    this.addChild(graphic);
-    return graphic;
-  }
-
-  private drawCell(x: number, y: number, tile: Tile): void {
-    const graphic = this.cellGraphics[y]?.[x];
-    if (!graphic) {
+  applyUpdate(update: MapRenderUpdate): void {
+    if (update.kind === "full") {
+      this.rebuildStructure(update.snapshot);
       return;
+    }
+
+    if (update.delta.revision <= this.lastRevision) {
+      return;
+    }
+
+    this.applyDelta(update.delta.changedCells);
+    this.lastRevision = update.delta.revision;
+  }
+
+  rebuildStructure(snapshot: MapRenderSnapshot): void {
+    this.gridWidth = snapshot.gridWidth;
+    this.gridHeight = snapshot.gridHeight;
+    this.lastRevision = snapshot.revision;
+
+    this.livingCells.clear();
+    this.clearLivingLayer();
+    this.drawBackground();
+
+    for (const cell of snapshot.livingCells) {
+      this.livingCells.set(this.cellKey(cell.x, cell.y), cell);
+    }
+
+    this.redrawAllChunks();
+  }
+
+  private applyDelta(changedCells: ReadonlyArray<CellVisualState>): void {
+    const dirtyChunks = new Set<string>();
+
+    for (const cell of changedCells) {
+      const key = this.cellKey(cell.x, cell.y);
+      const { cx, cy } = cellToChunk(cell.x, cell.y);
+      dirtyChunks.add(chunkKey(cx, cy));
+
+      if (cell.alive) {
+        this.livingCells.set(key, cell);
+      } else {
+        this.livingCells.delete(key);
+      }
+    }
+
+    for (const key of dirtyChunks) {
+      this.redrawChunk(key);
+    }
+  }
+
+  private drawBackground(): void {
+    this.backgroundLayer.clear();
+
+    const cellSize = this.cellSize;
+
+    for (let y = 0; y < this.gridHeight; y++) {
+      for (let x = 0; x < this.gridWidth; x++) {
+        this.backgroundLayer
+          .rect(x * cellSize, y * cellSize, cellSize, cellSize)
+          .fill(DEAD_CELL_COLOR)
+          .stroke({ width: 1, color: DEAD_CELL_BORDER_COLOR });
+      }
+    }
+  }
+
+  private redrawAllChunks(): void {
+    const { chunkCols, chunkRows } = getChunkCount(
+      this.gridWidth,
+      this.gridHeight,
+    );
+
+    for (let cy = 0; cy < chunkRows; cy++) {
+      for (let cx = 0; cx < chunkCols; cx++) {
+        this.redrawChunk(chunkKey(cx, cy));
+      }
+    }
+  }
+
+  private redrawChunk(key: string): void {
+    const [cxRaw, cyRaw] = key.split(",").map(Number);
+    const cx = cxRaw;
+    const cy = cyRaw;
+
+    let graphic = this.chunkGraphics.get(key);
+    if (!graphic) {
+      graphic = new Graphics();
+      this.chunkGraphics.set(key, graphic);
+      this.livingLayer.addChild(graphic);
     }
 
     graphic.clear();
 
-    if (tile.isAlive()) {
-      const color = tile.getEssence()?.color ?? DEFAULT_GAME_OF_LIFE_COLOR;
-      graphic.rect(0, 0, this.cellSize, this.cellSize).fill(color);
-      return;
+    const startX = cx * CHUNK_SIZE;
+    const startY = cy * CHUNK_SIZE;
+    const endX = Math.min(startX + CHUNK_SIZE, this.gridWidth);
+    const endY = Math.min(startY + CHUNK_SIZE, this.gridHeight);
+    const cellSize = this.cellSize;
+
+    for (let y = startY; y < endY; y++) {
+      for (let x = startX; x < endX; x++) {
+        const cell = this.livingCells.get(this.cellKey(x, y));
+        if (!cell?.alive) {
+          continue;
+        }
+
+        graphic
+          .rect(x * cellSize, y * cellSize, cellSize, cellSize)
+          .fill(cell.fillColor);
+      }
+    }
+  }
+
+  private clearLivingLayer(): void {
+    for (const graphic of this.chunkGraphics.values()) {
+      this.livingLayer.removeChild(graphic);
+      graphic.destroy();
     }
 
-    graphic
-      .rect(0, 0, this.cellSize, this.cellSize)
-      .fill(DEAD_CELL_COLOR)
-      .stroke({ width: 1, color: DEAD_CELL_BORDER_COLOR });
+    this.chunkGraphics.clear();
+  }
+
+  private cellKey(x: number, y: number): string {
+    return `${x},${y}`;
+  }
+
+  destroyGrid(): void {
+    this.clearLivingLayer();
+    this.backgroundLayer.clear();
+    this.livingCells.clear();
+    this.overlayLayer.removeChildren();
   }
 }

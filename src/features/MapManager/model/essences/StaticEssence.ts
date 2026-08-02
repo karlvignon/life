@@ -15,6 +15,6 @@ export class StaticEssence implements Essence {
   }
 
   evolve(input: EssenceEvolutionInput): EssenceEvolutionResult {
-    return { aliveCells: [...input.aliveCells] };
+    return { aliveIndices: [...input.aliveIndices] };
   }
 }

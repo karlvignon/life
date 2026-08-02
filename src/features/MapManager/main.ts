@@ -24,6 +24,8 @@ import {
   type MapRenderUpdate,
 } from "./render/types";
 import { computeGridSize, DEFAULT_CELL_SIZE, type MapConfig } from "./types";
+import { ChunkRenderDebugModel } from "./ChunkRenderDebugModel";
+import { ChunkRenderDebugView } from "./ChunkRenderDebugView";
 
 const DEFAULT_MAX_STEPS_PER_FRAME = 10;
 
@@ -70,6 +72,8 @@ export class MapManager {
   private readonly maxStepsPerFrame: number;
   private readonly builder = new Builder();
   private readonly eventManager = new MapEventManager();
+  private readonly chunkRenderDebugModel = new ChunkRenderDebugModel();
+  private readonly chunkRenderDebugView: ChunkRenderDebugView;
 
   private model: MapModel | null = null;
   private mapView: MapView | null = null;
@@ -83,6 +87,8 @@ export class MapManager {
   private pendingUpdate: MapRenderUpdate | null = null;
   private pendingDelta: MapRenderDelta | null = null;
   private lastHoveredTile: Tile | null = null;
+  private chunkRenderDebugEnabled = false;
+  private chunkRenderDebugDirty = false;
 
   private readonly onResize = (): void => {
     this.layout();
@@ -98,6 +104,7 @@ export class MapManager {
     this.stage = app.stage;
     this.gameEventBus = gameEventBus;
     this.cellSize = config.cellSize ?? DEFAULT_CELL_SIZE;
+    this.chunkRenderDebugView = new ChunkRenderDebugView(this.cellSize);
     this.maxStepsPerFrame = maxStepsPerFrame;
     const defaultEssence = config.defaultEssence ?? new GameOfLifeEssence();
     this.initialSpaceship =
@@ -120,6 +127,13 @@ export class MapManager {
   }
 
   update(dtMs: number): void {
+    if (
+      this.chunkRenderDebugEnabled &&
+      this.chunkRenderDebugModel.update(dtMs)
+    ) {
+      this.chunkRenderDebugDirty = true;
+    }
+
     if (!this.model || this.stepsPerSecond <= 0) {
       return;
     }
@@ -150,18 +164,46 @@ export class MapManager {
   }
 
   render(): void {
-    if (!this.renderDirty || !this.mapView || !this.pendingUpdate) {
+    if (!this.mapView || !this.model) {
       return;
     }
 
-    this.mapView.applyUpdate(this.pendingUpdate);
-    this.renderDirty = false;
-    this.pendingUpdate = null;
-    this.pendingDelta = null;
+    if (this.renderDirty && this.pendingUpdate) {
+      const renderedChunks = this.mapView.applyUpdate(this.pendingUpdate);
+
+      if (this.chunkRenderDebugEnabled) {
+        this.chunkRenderDebugModel.flash(renderedChunks);
+        this.chunkRenderDebugDirty = true;
+      }
+
+      this.renderDirty = false;
+      this.pendingUpdate = null;
+      this.pendingDelta = null;
+    }
+
+    if (this.chunkRenderDebugEnabled && this.chunkRenderDebugDirty) {
+      this.chunkRenderDebugView.syncFromModel(
+        this.chunkRenderDebugModel,
+        this.model.gridWidth,
+        this.model.gridHeight,
+      );
+      this.chunkRenderDebugDirty = false;
+    }
   }
 
   needsRender(): boolean {
-    return this.renderDirty;
+    return this.renderDirty || this.chunkRenderDebugDirty;
+  }
+
+  setChunkRenderDebugEnabled(enabled: boolean): void {
+    this.chunkRenderDebugEnabled = enabled;
+    this.chunkRenderDebugView.visible = enabled;
+
+    if (!enabled) {
+      this.chunkRenderDebugModel.clear();
+      this.chunkRenderDebugView.clear();
+      this.chunkRenderDebugDirty = false;
+    }
   }
 
   getModel(): MapModel | null {
@@ -230,6 +272,7 @@ export class MapManager {
     window.removeEventListener("resize", this.onResize);
     this.unbindMapPointerEvents();
     this.eventManager.destroy();
+    this.chunkRenderDebugView.destroy();
 
     if (this.mapView) {
       this.mapView.destroyGrid();
@@ -325,6 +368,7 @@ export class MapManager {
     if (!this.model) {
       this.model = new MapModel(gridWidth, gridHeight);
       this.mapView = new MapView(this.cellSize);
+      this.mapView.getOverlayLayer().addChild(this.chunkRenderDebugView);
       this.stage.addChild(this.mapView);
       this.bindMapPointerEvents();
     } else {

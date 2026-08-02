@@ -24,6 +24,9 @@ export class Game {
     this.app = app;
 
     this.mapManager = new MapManager(app, config.map, this.eventBus);
+    this.mapManager.setChunkRenderDebugEnabled(
+      config.devOptions?.display.displayChunkRender ?? false,
+    );
     this.gameOptionsManager = new GameOptionsManager(
       app,
       this.eventBus,

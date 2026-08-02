@@ -5,6 +5,7 @@ import type { DevOptions } from "./features/DevUI/main";
 const devOptions = {
   display: {
     devUi: true,
+    displayChunkRender: false,
   },
 } satisfies DevOptions;
 

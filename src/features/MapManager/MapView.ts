@@ -4,6 +4,7 @@ import {
   chunkKey,
   getChunkCount,
   CHUNK_SIZE,
+  type ChunkCoord,
 } from "./render/chunkIndex";
 import {
   DEAD_CELL_BORDER_COLOR,
@@ -42,21 +43,21 @@ export class MapView extends Container {
     return this.overlayLayer;
   }
 
-  applyUpdate(update: MapRenderUpdate): void {
+  applyUpdate(update: MapRenderUpdate): ReadonlyArray<ChunkCoord> {
     if (update.kind === "full") {
-      this.rebuildStructure(update.snapshot);
-      return;
+      return this.rebuildStructure(update.snapshot);
     }
 
     if (update.delta.revision <= this.lastRevision) {
-      return;
+      return [];
     }
 
-    this.applyDelta(update.delta.changedCells);
+    const renderedChunks = this.applyDelta(update.delta.changedCells);
     this.lastRevision = update.delta.revision;
+    return renderedChunks;
   }
 
-  rebuildStructure(snapshot: MapRenderSnapshot): void {
+  rebuildStructure(snapshot: MapRenderSnapshot): ReadonlyArray<ChunkCoord> {
     this.gridWidth = snapshot.gridWidth;
     this.gridHeight = snapshot.gridHeight;
     this.lastRevision = snapshot.revision;
@@ -69,10 +70,12 @@ export class MapView extends Container {
       this.livingCells.set(this.cellKey(cell.x, cell.y), cell);
     }
 
-    this.redrawAllChunks();
+    return this.redrawAllChunks();
   }
 
-  private applyDelta(changedCells: ReadonlyArray<CellVisualState>): void {
+  private applyDelta(
+    changedCells: ReadonlyArray<CellVisualState>,
+  ): ReadonlyArray<ChunkCoord> {
     const dirtyChunks = new Set<string>();
 
     for (const cell of changedCells) {
@@ -87,9 +90,7 @@ export class MapView extends Container {
       }
     }
 
-    for (const key of dirtyChunks) {
-      this.redrawChunk(key);
-    }
+    return [...dirtyChunks].map((key) => this.redrawChunk(key));
   }
 
   private drawBackground(): void {
@@ -107,20 +108,24 @@ export class MapView extends Container {
     }
   }
 
-  private redrawAllChunks(): void {
+  private redrawAllChunks(): ReadonlyArray<ChunkCoord> {
     const { chunkCols, chunkRows } = getChunkCount(
       this.gridWidth,
       this.gridHeight,
     );
 
+    const renderedChunks: ChunkCoord[] = [];
+
     for (let cy = 0; cy < chunkRows; cy++) {
       for (let cx = 0; cx < chunkCols; cx++) {
-        this.redrawChunk(chunkKey(cx, cy));
+        renderedChunks.push(this.redrawChunk(chunkKey(cx, cy)));
       }
     }
+
+    return renderedChunks;
   }
 
-  private redrawChunk(key: string): void {
+  private redrawChunk(key: string): ChunkCoord {
     const [cxRaw, cyRaw] = key.split(",").map(Number);
     const cx = cxRaw;
     const cy = cyRaw;
@@ -152,6 +157,8 @@ export class MapView extends Container {
           .fill(cell.fillColor);
       }
     }
+
+    return { cx, cy };
   }
 
   private clearLivingLayer(): void {

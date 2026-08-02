@@ -1,5 +1,5 @@
-import type { Essence } from "../Essence";
-import { RlePattern } from "../RlePattern";
+import type { Essence } from "../essences/Essence";
+import { RlePattern } from "./RlePattern";
 
 /** Puffer 1 — premier puffeur découvert (c/2, laisse des blinkers). */
 export class Puffer1 extends RlePattern {

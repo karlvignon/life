@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_GAME_OF_LIFE_COLOR,
   GameOfLifeEssence,
-} from "./GameOfLifeEssence";
+} from "./model/essences/GameOfLifeEssence";
 
 describe("GameOfLifeEssence", () => {
   const essence = new GameOfLifeEssence();
@@ -25,6 +25,8 @@ describe("GameOfLifeEssence", () => {
         { x: 2, y: 1 },
         { x: 1, y: 2 },
       ],
+      currentCycle: 1,
+      otherEssenceCells: [],
     });
 
     expect(result.aliveCells).toContainEqual({ x: 1, y: 1 });
@@ -35,6 +37,8 @@ describe("GameOfLifeEssence", () => {
       gridWidth: 5,
       gridHeight: 5,
       aliveCells: [{ x: 2, y: 2 }],
+      currentCycle: 1,
+      otherEssenceCells: [],
     });
 
     expect(result.aliveCells).toEqual([]);
@@ -49,6 +53,8 @@ describe("GameOfLifeEssence", () => {
         { x: 2, y: 1 },
         { x: 1, y: 2 },
       ],
+      currentCycle: 1,
+      otherEssenceCells: [],
     });
 
     expect(result.aliveCells).toContainEqual({ x: 2, y: 2 });
@@ -63,6 +69,8 @@ describe("GameOfLifeEssence", () => {
         { x: 0, y: 1 },
         { x: 0, y: 2 },
       ],
+      currentCycle: 1,
+      otherEssenceCells: [],
     });
 
     expect(result.aliveCells).toEqual([{ x: 0, y: 1 }]);

@@ -1,5 +1,5 @@
-import type { Essence } from "./Essence";
-import type { TileSnapshot } from "./types";
+import type { Essence } from "./essences/Essence";
+import type { TileSnapshot } from "../types";
 
 export class Tile {
   private alive = false;

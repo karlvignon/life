@@ -13,7 +13,7 @@ const BUTTON_BORDER = 0xef4444;
 const BUTTON_BACKGROUND_HOVER = 0x2a1515;
 const TEXT_COLOR = 0xfca5a5;
 
-export class ClearUiButton extends Container {
+export class ClearButtonView extends Container {
   private readonly eventManager: CellCreatorEventManager;
   private readonly background: Graphics;
   private readonly buttonWidth: number;

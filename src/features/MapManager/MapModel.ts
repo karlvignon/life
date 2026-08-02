@@ -1,6 +1,7 @@
-import type { Essence } from "./Essence";
-import { Tile } from "./Tile";
-import type { CellOffset, TileSnapshot } from "./types";
+import type { Essence } from "./model/essences/Essence";
+import { Tile } from "./model/Tile";
+import type { CellOffset } from "../../core/types/grid";
+import type { TileSnapshot } from "./types";
 
 function cellKey(x: number, y: number): string {
   return `${x},${y}`;
@@ -16,6 +17,7 @@ export class MapModel {
   private _gridWidth: number;
   private _gridHeight: number;
   private tiles: Tile[][] = [];
+  private currentCycle = 0;
 
   constructor(gridWidth: number, gridHeight: number) {
     this._gridWidth = gridWidth;
@@ -29,6 +31,10 @@ export class MapModel {
 
   get gridHeight(): number {
     return this._gridHeight;
+  }
+
+  getCurrentCycle(): number {
+    return this.currentCycle;
   }
 
   getTile(x: number, y: number): Tile | null {
@@ -74,16 +80,24 @@ export class MapModel {
   }
 
   step(): void {
+    this.currentCycle++;
+
     const livingCells = this.getLivingCells();
     const groups = this.groupByEssence(livingCells);
     const nextGenerations: EssenceGeneration[] = [];
 
     for (const [essence, tiles] of groups) {
       const inputCells = new Set(tiles.map((tile) => cellKey(tile.x, tile.y)));
+      const otherEssenceCells = livingCells
+        .filter((tile) => tile.getEssence() !== essence)
+        .map((tile) => ({ x: tile.x, y: tile.y }));
+
       const result = essence.evolve({
         gridWidth: this._gridWidth,
         gridHeight: this._gridHeight,
         aliveCells: tiles.map((tile) => ({ x: tile.x, y: tile.y })),
+        currentCycle: this.currentCycle,
+        otherEssenceCells,
       });
 
       nextGenerations.push({

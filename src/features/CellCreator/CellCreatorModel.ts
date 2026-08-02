@@ -1,5 +1,5 @@
-import type { Placeable } from "../MapManager/Placeable";
-import type { CellOffset } from "../MapManager/types";
+import type { Placeable } from "../MapManager/main";
+import type { CellOffset } from "../../core/types/grid";
 
 export class CellCreatorModel {
   private selectedPlaceable: Placeable | null = null;

@@ -1,11 +1,6 @@
-import type { Essence } from "./Essence";
-import type { Spaceship } from "./Spaceship";
-import { Tile } from "./Tile";
-
-export interface CellOffset {
-  x: number;
-  y: number;
-}
+import type { Essence } from "./model/essences/Essence";
+import type { Spaceship } from "./model/spaceships/Spaceship";
+import { Tile } from "./model/Tile";
 
 export interface TileSnapshot {
   x: number;

@@ -1,9 +1,5 @@
 import { Application } from "pixi.js";
 import { Game } from "./core/Game";
-import {
-  GameOfLifeEssence,
-  GenesisSpaceship,
-} from "./features/MapManager/main";
 
 (async () => {
   const app = new Application();
@@ -12,15 +8,10 @@ import {
 
   document.getElementById("pixi-container")!.appendChild(app.canvas);
 
-  const defaultEssence = new GameOfLifeEssence();
-
   new Game(app, {
-    defaultEssence,
-    map: {
-      initialSpaceship: new GenesisSpaceship(defaultEssence),
-    },
     gameOptions: {
-      initialSpeed: 0,
+      initialSpeed: 1,
+      maxSpeed: 20,
     },
   });
 })();

@@ -1,4 +1,4 @@
-import type { Placeable } from "../../features/MapManager/Placeable";
+import type { Placeable } from "../../features/MapManager/main";
 
 export type GameEventMap = {
   "game:speed-changed": { speed: number };

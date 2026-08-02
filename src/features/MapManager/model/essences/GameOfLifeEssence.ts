@@ -3,7 +3,7 @@ import type {
   EssenceEvolutionInput,
   EssenceEvolutionResult,
 } from "./Essence";
-import type { CellOffset } from "./types";
+import type { CellOffset } from "../../../../core/types/grid";
 
 export const DEFAULT_GAME_OF_LIFE_COLOR = 0x00ff88;
 

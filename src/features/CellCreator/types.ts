@@ -1,4 +1,4 @@
-import type { Placeable } from "../MapManager/Placeable";
+import type { Placeable } from "../MapManager/main";
 
 export type CellCreatorEventMap = {
   "placeable:select": { placeable: Placeable };

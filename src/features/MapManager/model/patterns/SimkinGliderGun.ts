@@ -1,5 +1,5 @@
-import type { Essence } from "../Essence";
-import { RlePattern } from "../RlePattern";
+import type { Essence } from "../essences/Essence";
+import { RlePattern } from "./RlePattern";
 
 /** Simkin glider gun — canon compact (Michael Simkin, 2015). */
 export class SimkinGliderGun extends RlePattern {

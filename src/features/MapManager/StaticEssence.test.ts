@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { Builder } from "./Builder";
-import { GameOfLifeEssence } from "./GameOfLifeEssence";
+import { Builder } from "./model/Builder";
+import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 import { MapModel } from "./MapModel";
-import { Placeable } from "./Placeable";
-import { DEFAULT_STATIC_COLOR, StaticEssence } from "./StaticEssence";
-import { BlinkerOscillator } from "./patterns/BlinkerOscillator";
-import { Tree } from "./patterns/Tree";
+import { Placeable } from "./model/Placeable";
+import {
+  DEFAULT_STATIC_COLOR,
+  StaticEssence,
+} from "./model/essences/StaticEssence";
+import { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
+import { Tree } from "./model/patterns/Tree";
 
 describe("StaticEssence", () => {
   const essence = new StaticEssence();
@@ -19,6 +22,8 @@ describe("StaticEssence", () => {
       gridWidth: 5,
       gridHeight: 5,
       aliveCells: [{ x: 2, y: 2 }],
+      currentCycle: 1,
+      otherEssenceCells: [],
     };
 
     const first = essence.evolve(input);

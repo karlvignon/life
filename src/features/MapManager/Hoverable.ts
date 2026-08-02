@@ -1,6 +1,6 @@
 import { Container, Rectangle } from "pixi.js";
 import { MapEventManager } from "./MapEventManager";
-import { Tile } from "./Tile";
+import { Tile } from "./model/Tile";
 
 export class Hoverable {
   private readonly onPointerOver: () => void;

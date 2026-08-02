@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_HIGHLIFE_COLOR, HighLifeEssence } from "./HighLifeEssence";
-import { GameOfLifeEssence } from "./GameOfLifeEssence";
+import {
+  DEFAULT_HIGHLIFE_COLOR,
+  HighLifeEssence,
+} from "./model/essences/HighLifeEssence";
+import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 
 describe("HighLifeEssence", () => {
   const essence = new HighLifeEssence();
@@ -26,6 +29,8 @@ describe("HighLifeEssence", () => {
         { x: 3, y: 2 },
         { x: 1, y: 3 },
       ],
+      currentCycle: 1,
+      otherEssenceCells: [],
     });
 
     expect(result.aliveCells).toContainEqual({ x: 2, y: 2 });
@@ -44,6 +49,8 @@ describe("HighLifeEssence", () => {
         { x: 3, y: 2 },
         { x: 1, y: 3 },
       ],
+      currentCycle: 1,
+      otherEssenceCells: [],
     });
 
     expect(result.aliveCells).not.toContainEqual({ x: 2, y: 2 });

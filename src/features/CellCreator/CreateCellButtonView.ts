@@ -5,7 +5,7 @@ import {
   Rectangle,
   Text,
 } from "pixi.js";
-import type { Placeable } from "../MapManager/Placeable";
+import type { Placeable } from "../MapManager/main";
 import { CellCreatorEventManager } from "./CellCreatorEventManager";
 
 const BUTTON_PADDING = 8;
@@ -17,7 +17,7 @@ const TEXT_COLOR = 0xf9fafb;
 const PREVIEW_CELL_SIZE = 3;
 const PREVIEW_CELL_GAP = 1;
 
-export class CreateCellUiButton extends Container {
+export class CreateCellButtonView extends Container {
   private readonly placeable: Placeable;
   private readonly eventManager: CellCreatorEventManager;
   private readonly background: Graphics;

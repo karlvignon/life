@@ -1,4 +1,4 @@
-import { MapModel } from "./MapModel";
+import { MapModel } from "../MapModel";
 import { Placeable } from "./Placeable";
 
 export class Builder {

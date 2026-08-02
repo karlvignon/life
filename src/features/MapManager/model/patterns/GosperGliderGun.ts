@@ -1,5 +1,5 @@
-import type { Essence } from "../Essence";
-import { RlePattern } from "../RlePattern";
+import type { Essence } from "../essences/Essence";
+import { RlePattern } from "./RlePattern";
 
 /** Gosper glider gun — premier canon à planeurs (Bill Gosper, 1970). */
 export class GosperGliderGun extends RlePattern {

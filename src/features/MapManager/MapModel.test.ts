@@ -1,14 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { Builder } from "./Builder";
+import { Builder } from "./model/Builder";
 import {
   DEFAULT_GAME_OF_LIFE_COLOR,
   GameOfLifeEssence,
-} from "./GameOfLifeEssence";
-import { DEFAULT_HIGHLIFE_COLOR, HighLifeEssence } from "./HighLifeEssence";
+} from "./model/essences/GameOfLifeEssence";
+import {
+  DEFAULT_HIGHLIFE_COLOR,
+  HighLifeEssence,
+} from "./model/essences/HighLifeEssence";
+import { StaticEssence } from "./model/essences/StaticEssence";
 import { MapModel } from "./MapModel";
-import { Placeable } from "./Placeable";
-import { BlinkerOscillator } from "./patterns/BlinkerOscillator";
-import { HighLifeReplicator } from "./patterns/HighLifeReplicator";
+import { Placeable } from "./model/Placeable";
+import { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
+import { HighLifeReplicator } from "./model/patterns/HighLifeReplicator";
+import {
+  MushroomEssence,
+  DEFAULT_MUSHROOM_COLOR,
+} from "./model/essences/MushroomEssence";
+import { SingleCellPattern } from "./model/patterns/SingleCellPattern";
 
 describe("MapModel", () => {
   const essence = new GameOfLifeEssence();
@@ -168,5 +177,78 @@ describe("MapModel", () => {
     expect(conwayEssence.color).toBe(DEFAULT_GAME_OF_LIFE_COLOR);
     expect(highLifeEssence.color).toBe(DEFAULT_HIGHLIFE_COLOR);
     expect(conwayEssence.color).not.toBe(highLifeEssence.color);
+  });
+
+  it("increments the current cycle on each step", () => {
+    const model = new MapModel(5, 5);
+
+    expect(model.getCurrentCycle()).toBe(0);
+    model.step();
+    expect(model.getCurrentCycle()).toBe(1);
+    model.step();
+    expect(model.getCurrentCycle()).toBe(2);
+  });
+
+  it("propagates Mushroom cells on cycle 50 with connected neighbors", () => {
+    const mushroomEssence = new MushroomEssence();
+    const model = new MapModel(7, 7);
+
+    for (const { x, y } of [
+      { x: 2, y: 2 },
+      { x: 3, y: 2 },
+      { x: 2, y: 3 },
+    ]) {
+      model.getTile(x, y)!.setAlive(true, mushroomEssence);
+    }
+
+    for (let i = 0; i < 49; i++) {
+      model.step();
+    }
+
+    expect(model.getTile(3, 3)?.isAlive()).toBe(false);
+
+    model.step();
+
+    expect(model.getCurrentCycle()).toBe(50);
+    expect(model.getTile(3, 3)?.isAlive()).toBe(true);
+    expect(model.getTile(3, 3)?.getEssence()).toBe(mushroomEssence);
+  });
+
+  it("kills Mushroom cells when surrounded by a connected enemy group", () => {
+    const mushroomEssence = new MushroomEssence();
+    const enemyEssence = new StaticEssence();
+    const model = new MapModel(7, 7);
+
+    model.getTile(3, 3)!.setAlive(true, mushroomEssence);
+    for (const { x, y } of [
+      { x: 2, y: 2 },
+      { x: 3, y: 2 },
+      { x: 2, y: 3 },
+    ]) {
+      model.getTile(x, y)!.setAlive(true, enemyEssence);
+    }
+
+    for (let i = 0; i < 50; i++) {
+      model.step();
+    }
+
+    expect(model.getTile(3, 3)?.isAlive()).toBe(false);
+  });
+
+  it("assigns Mushroom essence and color to placed single cells", () => {
+    const mushroomEssence = new MushroomEssence();
+    const model = new MapModel(5, 5);
+    const placeable = Placeable.centerOnGrid(
+      new SingleCellPattern(mushroomEssence),
+      5,
+      5,
+    );
+
+    builder.build(model, placeable);
+
+    for (const tile of model.getLivingCells()) {
+      expect(tile.getEssence()).toBe(mushroomEssence);
+      expect(tile.getEssence()?.color).toBe(DEFAULT_MUSHROOM_COLOR);
+    }
   });
 });

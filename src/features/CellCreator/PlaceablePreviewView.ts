@@ -1,5 +1,5 @@
 import { Container, Graphics } from "pixi.js";
-import type { Placeable } from "../MapManager/Placeable";
+import type { Placeable } from "../MapManager/main";
 import { PREVIEW_OPACITY } from "./types";
 
 export class PlaceablePreviewView extends Container {

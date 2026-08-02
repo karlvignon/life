@@ -22,7 +22,7 @@ const TRACK_HEIGHT = 6;
 const THUMB_RADIUS = 8;
 const SLIDER_HIT_HEIGHT = 24;
 
-export class GameOptionUi extends Container {
+export class GameOptionsView extends Container {
   private readonly layoutConfig: GameOptionsUiLayoutConfig;
   private readonly eventManager: GameOptionsEventManager;
   private readonly background: Graphics;

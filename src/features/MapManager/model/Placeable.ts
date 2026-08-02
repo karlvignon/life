@@ -1,6 +1,6 @@
-import { Pattern } from "./Pattern";
-import type { Essence } from "./Essence";
-import type { CellOffset } from "./types";
+import { Pattern } from "./patterns/Pattern";
+import type { Essence } from "./essences/Essence";
+import type { CellOffset } from "../../../core/types/grid";
 
 export class Placeable {
   constructor(

@@ -1,6 +1,6 @@
-import type { Essence } from "../Essence";
-import { Pattern } from "../Pattern";
-import type { CellOffset } from "../types";
+import type { Essence } from "../essences/Essence";
+import { Pattern } from "./Pattern";
+import type { CellOffset } from "../../../../core/types/grid";
 
 /** Oscillateur période 2 — 3 cellules en ligne. */
 export class BlinkerOscillator extends Pattern {

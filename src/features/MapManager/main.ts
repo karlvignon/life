@@ -1,42 +1,55 @@
 import { Application, Container, Rectangle } from "pixi.js";
 import type { EventBus } from "../../core/EventBus";
 import type { GameEventMap } from "../../core/types/gameEvents";
-import { Builder } from "./Builder";
-import { GameOfLifeEssence } from "./GameOfLifeEssence";
-import { GenesisSpaceship } from "./GenesisSpaceship";
 import { MapEventManager } from "./MapEventManager";
 import { MapModel } from "./MapModel";
 import { MapView } from "./MapView";
-import { Placeable } from "./Placeable";
-import { Spaceship } from "./Spaceship";
-import { TileInfoUi } from "./TileInfoUi";
+import { TileInfoView } from "./TileInfoView";
+import { Builder } from "./model/Builder";
+import { Placeable } from "./model/Placeable";
+import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
+import { GenesisSpaceship } from "./model/spaceships/GenesisSpaceship";
+import { Spaceship } from "./model/spaceships/Spaceship";
 import { computeGridSize, DEFAULT_CELL_SIZE, type MapConfig } from "./types";
 
-export type {
-  MapConfig,
-  TileSnapshot,
-  TileInfoUiLayoutConfig,
-  CellOffset,
-} from "./types";
-export { Tile } from "./Tile";
+export type { MapConfig, TileSnapshot, TileInfoUiLayoutConfig } from "./types";
+export type { CellOffset } from "../../core/types/grid";
 export { DEFAULT_TILE_INFO_UI_LAYOUT } from "./types";
-export type { Essence } from "./Essence";
+export { Tile } from "./model/Tile";
+export { Placeable } from "./model/Placeable";
+export type { Essence } from "./model/essences/Essence";
 export {
   GameOfLifeEssence,
   DEFAULT_GAME_OF_LIFE_COLOR,
-} from "./GameOfLifeEssence";
-export { HighLifeEssence, DEFAULT_HIGHLIFE_COLOR } from "./HighLifeEssence";
-export { StaticEssence, DEFAULT_STATIC_COLOR } from "./StaticEssence";
-export { Pattern } from "./Pattern";
-export { RlePattern } from "./RlePattern";
-export { Spaceship } from "./Spaceship";
-export { GenesisSpaceship } from "./GenesisSpaceship";
-export { GliderSpaceship } from "./GliderSpaceship";
-export { LightweightSpaceship } from "./LightweightSpaceship";
-export { MiddleweightSpaceship } from "./MiddleweightSpaceship";
-export { Placeable } from "./Placeable";
-export { HighLifeReplicator } from "./patterns/HighLifeReplicator";
-export { Tree } from "./patterns/Tree";
+} from "./model/essences/GameOfLifeEssence";
+export {
+  HighLifeEssence,
+  DEFAULT_HIGHLIFE_COLOR,
+} from "./model/essences/HighLifeEssence";
+export {
+  StaticEssence,
+  DEFAULT_STATIC_COLOR,
+} from "./model/essences/StaticEssence";
+export {
+  MushroomEssence,
+  DEFAULT_MUSHROOM_COLOR,
+} from "./model/essences/MushroomEssence";
+export { Pattern } from "./model/patterns/Pattern";
+export { RlePattern } from "./model/patterns/RlePattern";
+export { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
+export { GosperGliderGun } from "./model/patterns/GosperGliderGun";
+export { HighLifeReplicator } from "./model/patterns/HighLifeReplicator";
+export { Puffer1 } from "./model/patterns/Puffer1";
+export { Puffer2 } from "./model/patterns/Puffer2";
+export { SimkinGliderGun } from "./model/patterns/SimkinGliderGun";
+export { ToadOscillator } from "./model/patterns/ToadOscillator";
+export { Tree } from "./model/patterns/Tree";
+export { SingleCellPattern } from "./model/patterns/SingleCellPattern";
+export { Spaceship } from "./model/spaceships/Spaceship";
+export { GenesisSpaceship } from "./model/spaceships/GenesisSpaceship";
+export { GliderSpaceship } from "./model/spaceships/GliderSpaceship";
+export { LightweightSpaceship } from "./model/spaceships/LightweightSpaceship";
+export { MiddleweightSpaceship } from "./model/spaceships/MiddleweightSpaceship";
 
 export class MapManager {
   private readonly app: Application;
@@ -49,7 +62,7 @@ export class MapManager {
 
   private model: MapModel | null = null;
   private mapView: MapView | null = null;
-  private readonly tileInfoUi: TileInfoUi;
+  private readonly tileInfoUi: TileInfoView;
   private readonly gameEventBus: EventBus | null;
   private seeded = false;
   private stepsPerSecond = 0;
@@ -76,7 +89,7 @@ export class MapManager {
     this.uiRoot.label = "uiRoot";
     this.stage.addChild(this.uiRoot);
 
-    this.tileInfoUi = new TileInfoUi(config.tileInfoLayout);
+    this.tileInfoUi = new TileInfoView(config.tileInfoLayout);
     this.uiRoot.addChild(this.tileInfoUi);
 
     this.bindEvents();

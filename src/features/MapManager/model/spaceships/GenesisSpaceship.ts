@@ -1,6 +1,6 @@
-import type { Essence } from "./Essence";
+import type { Essence } from "../essences/Essence";
 import { Spaceship } from "./Spaceship";
-import type { CellOffset } from "./types";
+import type { CellOffset } from "../../../../core/types/grid";
 
 export class GenesisSpaceship extends Spaceship {
   constructor(essence: Essence) {

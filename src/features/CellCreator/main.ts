@@ -6,18 +6,17 @@ import {
 } from "pixi.js";
 import type { EventBus } from "../../core/EventBus";
 import type { GameEventMap } from "../../core/types/gameEvents";
-import type { Essence } from "../MapManager/Essence";
-import type { MapManager } from "../MapManager/main";
-import type { MapView } from "../MapManager/MapView";
-import { Placeable } from "../MapManager/Placeable";
+import { Placeable, type MapManager } from "../MapManager/main";
 import { CellCreatorEventManager } from "./CellCreatorEventManager";
 import { CellCreatorModel } from "./CellCreatorModel";
 import {
   createToolbarButtons,
-  isCreateCellUiButton,
-} from "./createCellButtons";
-import { CreateButtonsUi } from "./CreateButtonsUi";
+  isCreateCellButtonView,
+} from "./CreateCellButtons";
+import { CreateButtonsView } from "./CreateButtonsView";
 import { PlaceablePreviewView } from "./PlaceablePreviewView";
+
+type MapView = NonNullable<ReturnType<MapManager["getMapView"]>>;
 
 export class CellCreatorManager {
   private readonly app: Application;
@@ -27,7 +26,7 @@ export class CellCreatorManager {
   private readonly model = new CellCreatorModel();
   private readonly eventManager = new CellCreatorEventManager();
   private readonly uiRoot: Container;
-  private readonly view: CreateButtonsUi;
+  private readonly view: CreateButtonsView;
   private readonly previewView = new PlaceablePreviewView();
   private boundMapView: MapView | null = null;
 
@@ -52,7 +51,6 @@ export class CellCreatorManager {
     app: Application,
     gameEventBus: EventBus,
     mapManager: MapManager,
-    defaultEssence: Essence,
   ) {
     this.app = app;
     this.gameEventBus = gameEventBus;
@@ -63,8 +61,8 @@ export class CellCreatorManager {
     this.app.stage.addChild(this.uiRoot);
     this.uiRootsToIgnore.push(this.uiRoot);
 
-    const buttons = createToolbarButtons(this.eventManager, defaultEssence);
-    this.view = new CreateButtonsUi(buttons);
+    const buttons = createToolbarButtons(this.eventManager);
+    this.view = new CreateButtonsView(buttons);
     this.uiRoot.addChild(this.view);
 
     this.bindEvents();
@@ -167,7 +165,7 @@ export class CellCreatorManager {
 
   private syncButtonActiveState(selected: Placeable | null): void {
     for (const button of this.view.getButtons()) {
-      if (!isCreateCellUiButton(button)) {
+      if (!isCreateCellButtonView(button)) {
         continue;
       }
 

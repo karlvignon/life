@@ -1,9 +1,9 @@
 import { Container } from "pixi.js";
-import type { ToolbarButton } from "./createCellButtons";
+import type { ToolbarButton } from "./CreateCellButtons";
 import type { CreateButtonsUiLayoutConfig, ParentLayoutBounds } from "./types";
 import { DEFAULT_CREATE_BUTTONS_UI_LAYOUT } from "./types";
 
-export class CreateButtonsUi extends Container {
+export class CreateButtonsView extends Container {
   private readonly buttons: ToolbarButton[];
   private readonly layoutConfig: CreateButtonsUiLayoutConfig;
 

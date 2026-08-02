@@ -2,12 +2,10 @@ import { Application } from "pixi.js";
 import { EventBus } from "./EventBus";
 import { CellCreatorManager } from "../features/CellCreator/main";
 import { GameOptionsManager } from "../features/GameOptions/main";
-import type { Essence } from "../features/MapManager/Essence";
 import { MapManager, type MapConfig } from "../features/MapManager/main";
 import type { GameOptionsConfig } from "../features/GameOptions/main";
 
 export interface GameConfig {
-  defaultEssence: Essence;
   map?: MapConfig;
   gameOptions?: GameOptionsConfig;
 }
@@ -22,11 +20,7 @@ export class Game {
   constructor(app: Application, config: GameConfig) {
     this.app = app;
 
-    this.mapManager = new MapManager(
-      app,
-      { ...config.map, defaultEssence: config.defaultEssence },
-      this.eventBus,
-    );
+    this.mapManager = new MapManager(app, config.map, this.eventBus);
     this.gameOptionsManager = new GameOptionsManager(
       app,
       this.eventBus,
@@ -36,7 +30,6 @@ export class Game {
       app,
       this.eventBus,
       this.mapManager,
-      config.defaultEssence,
     );
     this.cellCreatorManager.registerUiRootToIgnore(this.mapManager.getUiRoot());
     this.cellCreatorManager.registerUiRootToIgnore(

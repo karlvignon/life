@@ -1,6 +1,6 @@
-import type { Essence } from "./Essence";
+import type { Essence } from "../essences/Essence";
 import { Spaceship } from "./Spaceship";
-import type { CellOffset } from "./types";
+import type { CellOffset } from "../../../../core/types/grid";
 
 /** Middleweight spaceship (MWSS) — vaisseau orthogonal classique (c/2, période 4). */
 export class MiddleweightSpaceship extends Spaceship {

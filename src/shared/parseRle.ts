@@ -1,4 +1,4 @@
-import type { CellOffset } from "../features/MapManager/types";
+import type { CellOffset } from "../core/types/grid";
 
 /** Parse un motif RLE LifeWiki (o = vivant, b = mort). */
 export function parseRle(rle: string): CellOffset[] {

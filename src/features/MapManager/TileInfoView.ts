@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from "pixi.js";
-import { Tile } from "./Tile";
+import { Tile } from "./model/Tile";
 import type {
   HorizontalAlign,
   ParentLayoutBounds,
@@ -13,7 +13,7 @@ const PANEL_BACKGROUND = 0x111827;
 const PANEL_BORDER = 0x374151;
 const TEXT_COLOR = 0xf9fafb;
 
-export class TileInfoUi extends Container {
+export class TileInfoView extends Container {
   private readonly layoutConfig: TileInfoUiLayoutConfig;
   private readonly background: Graphics;
   private readonly infoText: Text;

@@ -1,7 +1,7 @@
 import { Application, Container, Rectangle } from "pixi.js";
 import type { EventBus } from "../../core/EventBus";
 import type { GameEventMap } from "../../core/types/gameEvents";
-import { GameOptionUi } from "./GameOptionUi";
+import { GameOptionsView } from "./GameOptionsView";
 import { GameOptionsEventManager } from "./GameOptionsEventManager";
 import { GameOptionsModel } from "./GameOptionsModel";
 import {
@@ -19,7 +19,7 @@ export class GameOptionsManager {
   private readonly gameEventBus: EventBus;
   private readonly uiRoot: Container;
   private readonly model: GameOptionsModel;
-  private readonly view: GameOptionUi;
+  private readonly view: GameOptionsView;
   private readonly eventManager = new GameOptionsEventManager();
 
   private readonly onResize = (): void => {
@@ -44,7 +44,7 @@ export class GameOptionsManager {
     this.uiRoot.label = "gameOptionsUiRoot";
     this.app.stage.addChild(this.uiRoot);
 
-    this.view = new GameOptionUi(this.eventManager, config.layout);
+    this.view = new GameOptionsView(this.eventManager, config.layout);
     this.uiRoot.addChild(this.view);
     this.view.syncFromModel(this.model);
 

@@ -2,8 +2,8 @@ import { Container, Graphics } from "pixi.js";
 import { Hoverable } from "./Hoverable";
 import { MapEventManager } from "./MapEventManager";
 import { MapModel } from "./MapModel";
-import { DEFAULT_GAME_OF_LIFE_COLOR } from "./GameOfLifeEssence";
-import { Tile } from "./Tile";
+import { DEFAULT_GAME_OF_LIFE_COLOR } from "./model/essences/GameOfLifeEssence";
+import { Tile } from "./model/Tile";
 
 const DEAD_CELL_COLOR = 0x1a1a2e;
 const DEAD_CELL_BORDER_COLOR = 0x2a2a3e;

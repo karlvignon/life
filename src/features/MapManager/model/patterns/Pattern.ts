@@ -1,5 +1,5 @@
-import type { Essence } from "./Essence";
-import type { CellOffset } from "./types";
+import type { Essence } from "../essences/Essence";
+import type { CellOffset } from "../../../../core/types/grid";
 
 export abstract class Pattern {
   constructor(protected readonly essence: Essence) {}

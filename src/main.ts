@@ -11,7 +11,7 @@ import { Game } from "./core/Game";
   new Game(app, {
     gameOptions: {
       initialSpeed: 1,
-      maxSpeed: 20,
+      maxSpeed: 200,
     },
   });
 })();

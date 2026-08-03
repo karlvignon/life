@@ -70,22 +70,12 @@ export function makeGameOfLifeInput(
     alive.map(({ x, y }) => packIndex(x, y, bounds.width)),
   );
 
-  const currentCycle = overrides.currentCycle ?? 1;
-
   return {
     ...overrides,
     bounds,
     aliveIndices,
     globalLivingIndices: overrides.globalLivingIndices ?? aliveIndices,
-    currentCycle,
-    weather:
-      overrides.weather ??
-      Object.freeze({
-        cycle: currentCycle,
-        season: "Spring",
-        windStrength: 0,
-        degrees: 0,
-      }),
+    currentCycle: overrides.currentCycle ?? 1,
   };
 }
 

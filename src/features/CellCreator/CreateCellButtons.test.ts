@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { StaticEssence } from "../MapManager/main";
+import { StaticEssence, TreeEssence } from "../MapManager/main";
 import {
   DEFAULT_ESSENCE_DEFINITION,
   ESSENCE_DEFINITIONS,
@@ -13,8 +13,16 @@ describe("CellCreator definitions", () => {
       "high-life",
       "static",
       "mushroom",
+      "tree",
     ]);
     expect(DEFAULT_ESSENCE_DEFINITION.id).toBe("game-of-life");
+  });
+
+  it("offers the Tree essence", () => {
+    const definition = ESSENCE_DEFINITIONS.find(({ id }) => id === "tree");
+
+    expect(definition?.label).toBe("Tree");
+    expect(definition?.essence).toBeInstanceOf(TreeEssence);
   });
 
   it("builds every toolbar pattern with the selected essence instance", () => {
@@ -29,7 +37,10 @@ describe("CellCreator definitions", () => {
 
   it("exposes stateless essence definitions with base properties", () => {
     for (const definition of ESSENCE_DEFINITIONS) {
-      expect(definition.essence.getInitialProperties()).toEqual({ life: 100 });
+      expect(definition.essence.getInitialProperties()).toEqual({
+        life: 100,
+        maximumLife: 100,
+      });
     }
   });
 });

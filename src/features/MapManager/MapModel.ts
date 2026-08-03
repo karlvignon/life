@@ -10,6 +10,7 @@ import {
 import { computeNextGeneration } from "./model/evolution/EvolutionEngine";
 import { LivingCellRegistry } from "./model/LivingCellRegistry";
 import { Tile } from "./model/Tile";
+import { applyModifiers, Modifier } from "./model/modifiers/Modifier";
 import type { TileSnapshot } from "./types";
 import {
   deadCellVisualState,
@@ -23,6 +24,10 @@ export class MapModel {
   private _gridHeight: number;
   private tiles: Tile[][] = [];
   private readonly registry = new LivingCellRegistry();
+  private readonly modifierTargetsByEssence = new Map<
+    Essence,
+    Map<string, Tile[]>
+  >();
   private renderRevision = 0;
 
   constructor(gridWidth: number, gridHeight: number) {
@@ -91,8 +96,16 @@ export class MapModel {
     const wasAlive = tile.isAlive();
     const previousEssence = tile.getEssence();
 
+    if (wasAlive && previousEssence && previousEssence !== essence) {
+      this.removeModifiersAuthoredBy(x, y, previousEssence);
+    }
+
     tile.setAlive(true, essence);
     this.registry.set(index, essence);
+
+    if (!wasAlive || previousEssence !== essence) {
+      this.applyBirthModifiers(x, y, essence);
+    }
     this.renderRevision++;
 
     if (wasAlive && previousEssence === essence) {
@@ -127,10 +140,15 @@ export class MapModel {
       const wasAlive = tile.isAlive();
       const previousEssence = tile.getEssence();
 
+      if (wasAlive && previousEssence && previousEssence !== essence) {
+        this.removeModifiersAuthoredBy(x, y, previousEssence);
+      }
+
       tile.setAlive(true, essence);
       this.registry.set(index, essence);
 
       if (!wasAlive || previousEssence !== essence) {
+        this.applyBirthModifiers(x, y, essence);
         changes.push({ x, y, alive: true, essence });
       }
     }
@@ -147,6 +165,10 @@ export class MapModel {
 
     this.registry.forEach((_index, _essence, x, y) => {
       const tile = this.getTile(x, y);
+      const essence = tile?.getEssence();
+      if (essence) {
+        this.removeModifiersAuthoredBy(x, y, essence);
+      }
       tile?.setAlive(false);
       changes.push({ x, y, alive: false, essence: null });
     }, this._gridWidth);
@@ -165,7 +187,7 @@ export class MapModel {
     const placeChanges: CellChange[] = [];
 
     for (const cell of cells) {
-      if (!cell.alive || !cell.essence) {
+      if (!cell.alive || !cell.essence || !cell.data) {
         continue;
       }
 
@@ -175,11 +197,9 @@ export class MapModel {
       }
 
       const index = packIndex(cell.x, cell.y, this._gridWidth);
-      tile.setAlive(true, cell.essence, {
-        life: cell.life,
-        maximumLife: cell.maximumLife,
-      });
+      tile.setAlive(true, cell.essence, cell.data);
       this.registry.set(index, cell.essence);
+      this.applyBirthModifiers(cell.x, cell.y, cell.essence);
       placeChanges.push({
         x: cell.x,
         y: cell.y,
@@ -232,8 +252,17 @@ export class MapModel {
         continue;
       }
 
+      if (change.previousAlive && change.previousEssence) {
+        this.removeModifiersAuthoredBy(
+          change.x,
+          change.y,
+          change.previousEssence,
+        );
+      }
+
       if (change.nextAlive && change.nextEssence) {
         tile.setAlive(true, change.nextEssence);
+        this.applyBirthModifiers(change.x, change.y, change.nextEssence);
       } else {
         tile.setAlive(false);
       }
@@ -242,7 +271,16 @@ export class MapModel {
     // Phase 2 : chaque cellule applique indépendamment les répercussions météo,
     // après que toutes les naissances et morts d'évolution ont été appliquées.
     this.registry.forEach((_index, essence, x, y) => {
-      this.getTile(x, y)?.apply(essence.getWeatherRepercussion(weather));
+      const tile = this.getTile(x, y);
+      if (!tile) {
+        return;
+      }
+
+      tile.apply(
+        essence.getWeatherRepercussion(
+          applyModifiers(weather, tile.getModifiers()),
+        ),
+      );
     }, this._gridWidth);
 
     const survivingLiving = new Map(
@@ -251,7 +289,7 @@ export class MapModel {
         .filter(({ index }) => {
           const x = index % this._gridWidth;
           const y = Math.floor(index / this._gridWidth);
-          return this.getTile(x, y)?.hasPositiveLife() ?? false;
+          return this.getTile(x, y)?.getData()?.hasPositiveLife() ?? false;
         })
         .map(({ index, essence }) => [index, essence] as const),
     );
@@ -261,6 +299,13 @@ export class MapModel {
     );
 
     for (const change of weatherDeathChanges) {
+      if (change.previousEssence) {
+        this.removeModifiersAuthoredBy(
+          change.x,
+          change.y,
+          change.previousEssence,
+        );
+      }
       this.getTile(change.x, change.y)?.setAlive(false);
     }
 
@@ -325,18 +370,20 @@ export class MapModel {
     this._gridHeight = gridHeight;
     this.initGrid();
     this.registry.clear();
+    this.modifierTargetsByEssence.clear();
 
     for (const snapshot of previousLiving) {
       const tile = this.getTile(snapshot.x, snapshot.y);
-      if (tile && snapshot.essence) {
+      if (tile && snapshot.essence && snapshot.data) {
         const index = packIndex(snapshot.x, snapshot.y, this._gridWidth);
-        tile.setAlive(true, snapshot.essence, {
-          life: snapshot.life,
-          maximumLife: snapshot.maximumLife,
-        });
+        tile.setAlive(true, snapshot.essence, snapshot.data);
         this.registry.set(index, snapshot.essence);
       }
     }
+
+    this.registry.forEach((_index, essence, x, y) => {
+      this.applyBirthModifiers(x, y, essence);
+    }, this._gridWidth);
 
     this.renderRevision++;
 
@@ -353,6 +400,78 @@ export class MapModel {
       }
       this.tiles.push(row);
     }
+  }
+
+  private applyBirthModifiers(x: number, y: number, essence: Essence): void {
+    const definitions = essence.getBirthModifiers();
+    if (definitions.length === 0) {
+      return;
+    }
+
+    const author = Object.freeze({ x, y, essence });
+    const targets: Tile[] = [];
+
+    for (const definition of definitions) {
+      const target = this.getTile(
+        x + definition.offsetX,
+        y + definition.offsetY,
+      );
+      if (!target) {
+        continue;
+      }
+
+      target.addModifier(
+        new Modifier(
+          author,
+          definition.property,
+          definition.mode,
+          definition.value,
+        ),
+      );
+      targets.push(target);
+    }
+
+    if (targets.length === 0) {
+      return;
+    }
+
+    let targetsByAuthor = this.modifierTargetsByEssence.get(essence);
+    if (!targetsByAuthor) {
+      targetsByAuthor = new Map<string, Tile[]>();
+      this.modifierTargetsByEssence.set(essence, targetsByAuthor);
+    }
+    targetsByAuthor.set(this.getModifierAuthorKey(x, y), targets);
+  }
+
+  private removeModifiersAuthoredBy(
+    x: number,
+    y: number,
+    essence: Essence,
+  ): void {
+    const targetsByAuthor = this.modifierTargetsByEssence.get(essence);
+    if (!targetsByAuthor) {
+      return;
+    }
+
+    const authorKey = this.getModifierAuthorKey(x, y);
+    const targets = targetsByAuthor.get(authorKey);
+    if (!targets) {
+      return;
+    }
+
+    const author = { x, y, essence };
+    for (const target of targets) {
+      target.removeModifiersAuthoredBy(author);
+    }
+
+    targetsByAuthor.delete(authorKey);
+    if (targetsByAuthor.size === 0) {
+      this.modifierTargetsByEssence.delete(essence);
+    }
+  }
+
+  private getModifierAuthorKey(x: number, y: number): string {
+    return `${x}:${y}`;
   }
 
   private isInBounds(x: number, y: number): boolean {

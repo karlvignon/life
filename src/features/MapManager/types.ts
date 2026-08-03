@@ -1,14 +1,14 @@
 import type { Essence } from "./model/essences/Essence";
 import type { Spaceship } from "./model/spaceships/Spaceship";
 import { Tile } from "./model/Tile";
+import type { TileDataProperties } from "./model/TileData";
 
 export interface TileSnapshot {
   x: number;
   y: number;
   alive: boolean;
   essence: Essence | null;
-  life: number;
-  maximumLife: number;
+  data: TileDataProperties | null;
 }
 
 export type HorizontalAlign = "start" | "center" | "end";
@@ -35,7 +35,7 @@ export const DEFAULT_TILE_INFO_UI_LAYOUT: TileInfoUiLayoutConfig = {
   verticalAlign: "start",
   margin: { x: 12, y: 12 },
   maxWidth: 248,
-  maxHeight: 140,
+  maxHeight: 320,
 };
 
 export interface MapConfig {

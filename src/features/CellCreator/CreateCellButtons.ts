@@ -10,6 +10,7 @@ import {
   MushroomEssence,
   SingleCellPattern,
   StaticEssence,
+  TreeEssence,
   ToadOscillator,
   type Essence,
 } from "../MapManager/main";
@@ -40,6 +41,11 @@ export const ESSENCE_DEFINITIONS: ReadonlyArray<EssenceDefinition> = [
     id: "mushroom",
     label: "Mushroom",
     essence: new MushroomEssence(),
+  },
+  {
+    id: "tree",
+    label: "Tree",
+    essence: new TreeEssence(),
   },
 ];
 

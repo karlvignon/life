@@ -29,7 +29,6 @@ export function computeNextGeneration(input: EvolutionInput): EvolutionOutput {
       aliveIndices,
       globalLivingIndices: globalLiving,
       currentCycle: input.currentCycle,
-      weather: input.weather,
     });
 
     generations.push({

@@ -1,4 +1,5 @@
 import { Container, Graphics, Text } from "pixi.js";
+import type { Modifier } from "./model/modifiers/Modifier";
 import { Tile } from "./model/Tile";
 import type {
   HorizontalAlign,
@@ -11,6 +12,9 @@ import { DEFAULT_TILE_INFO_UI_LAYOUT } from "./types";
 const PANEL_WIDTH = 236;
 const DEAD_PANEL_HEIGHT = 78;
 const LIVING_PANEL_HEIGHT = 130;
+const MODIFIERS_SECTION_GAP = 10;
+const MODIFIERS_HEADER_HEIGHT = 18;
+const MODIFIER_LINE_HEIGHT = 15;
 const PANEL_PADDING = 16;
 const PANEL_RADIUS = 10;
 const PANEL_BACKGROUND = 0x0b1020;
@@ -28,6 +32,7 @@ export class TileInfoView extends Container {
   private readonly divider = new Graphics();
   private readonly lifeBarBackground = new Graphics();
   private readonly lifeBarFill = new Graphics();
+  private readonly modifiersDivider = new Graphics();
   private readonly titleText = new Text({
     text: "",
     style: {
@@ -65,6 +70,27 @@ export class TileInfoView extends Container {
       fontWeight: "600",
     },
   });
+  private readonly modifiersLabel = new Text({
+    text: "",
+    style: {
+      fill: TEXT_SECONDARY,
+      fontFamily: "Arial, sans-serif",
+      fontSize: 10,
+      fontWeight: "600",
+      letterSpacing: 1.4,
+    },
+  });
+  private readonly modifiersText = new Text({
+    text: "",
+    style: {
+      fill: TEXT_PRIMARY,
+      fontFamily: "monospace",
+      fontSize: 10,
+      lineHeight: MODIFIER_LINE_HEIGHT,
+      wordWrap: true,
+      wordWrapWidth: PANEL_WIDTH - PANEL_PADDING * 2,
+    },
+  });
   private parentBounds: ParentLayoutBounds = { width: 0, height: 0 };
   private panelWidth = PANEL_WIDTH;
   private panelHeight = DEAD_PANEL_HEIGHT;
@@ -94,6 +120,9 @@ export class TileInfoView extends Container {
       this.lifeValue,
       this.lifeBarBackground,
       this.lifeBarFill,
+      this.modifiersDivider,
+      this.modifiersLabel,
+      this.modifiersText,
     );
     this.visible = false;
   }
@@ -107,24 +136,26 @@ export class TileInfoView extends Container {
     const snapshot = tile.toSnapshot();
     const essence = snapshot.alive ? snapshot.essence : null;
     const accentColor = essence?.color ?? EMPTY_ACCENT;
+    const modifiers = tile.getModifiers();
 
     this.titleText.text = essence?.name ?? "Empty cell";
     this.coordinatesText.text = `X ${snapshot.x}   ·   Y ${snapshot.y}`;
 
-    if (essence) {
-      const life = snapshot.life;
-      const maximumLife = snapshot.maximumLife;
+    if (essence && snapshot.data) {
+      const { life, maximumLife } = snapshot.data;
       const lifeRatio =
         maximumLife > 0 ? Math.max(0, Math.min(1, life / maximumLife)) : 0;
 
       this.lifeValue.text = `${life} / ${maximumLife}`;
       this.setLifeElementsVisible(true);
-      this.drawPanel(LIVING_PANEL_HEIGHT, accentColor);
       this.drawLifeBar(lifeRatio, accentColor);
     } else {
       this.setLifeElementsVisible(false);
-      this.drawPanel(DEAD_PANEL_HEIGHT, accentColor);
     }
+
+    const baseHeight = essence ? LIVING_PANEL_HEIGHT : DEAD_PANEL_HEIGHT;
+    const panelHeight = this.syncModifiers(modifiers, baseHeight);
+    this.drawPanel(panelHeight, accentColor);
 
     this.visible = true;
     this.layoutWithinParent(this.parentBounds);
@@ -225,6 +256,70 @@ export class TileInfoView extends Container {
     this.lifeBarBackground.visible = visible;
     this.lifeBarFill.visible = visible;
   }
+
+  private syncModifiers(
+    modifiers: ReadonlyArray<Modifier>,
+    baseHeight: number,
+  ): number {
+    const visible = modifiers.length > 0;
+    this.modifiersDivider.visible = visible;
+    this.modifiersLabel.visible = visible;
+    this.modifiersText.visible = visible;
+
+    if (!visible) {
+      this.modifiersLabel.text = "";
+      this.modifiersText.text = "";
+      return baseHeight;
+    }
+
+    const contentWidth = PANEL_WIDTH - PANEL_PADDING * 2;
+    this.modifiersDivider.clear();
+    this.modifiersDivider
+      .rect(PANEL_PADDING, baseHeight, contentWidth, 1)
+      .fill({ color: PANEL_BORDER, alpha: 0.8 });
+
+    this.modifiersLabel.text = `MODIFIERS (${modifiers.length})`;
+    this.modifiersLabel.position.set(
+      PANEL_PADDING,
+      baseHeight + MODIFIERS_SECTION_GAP,
+    );
+
+    this.modifiersText.text = modifiers.map(formatModifier).join("\n");
+    this.modifiersText.position.set(
+      PANEL_PADDING,
+      baseHeight + MODIFIERS_SECTION_GAP + MODIFIERS_HEADER_HEIGHT,
+    );
+
+    return (
+      baseHeight +
+      MODIFIERS_SECTION_GAP +
+      MODIFIERS_HEADER_HEIGHT +
+      Math.ceil(this.modifiersText.height) +
+      PANEL_PADDING
+    );
+  }
+}
+
+export function formatModifier(modifier: Modifier): string {
+  const property = modifier.property === "degrees" ? "Temperature" : "Wind";
+  const value =
+    modifier.mode === "proportional"
+      ? formatSignedValue(modifier.value * 100, "%")
+      : formatSignedValue(
+          modifier.value,
+          modifier.property === "degrees" ? "°C" : "",
+        );
+  const mode = modifier.mode === "proportional" ? "PROP" : "ABS";
+
+  return `${property} ${value} ${mode} · ${modifier.author.essence.name} (${modifier.author.x},${modifier.author.y})`;
+}
+
+function formatSignedValue(value: number, unit: string): string {
+  const sign = value > 0 ? "+" : "";
+  const formattedValue = Number.isInteger(value)
+    ? value.toString()
+    : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  return `${sign}${formattedValue}${unit}`;
 }
 
 function resolveHorizontalPosition(

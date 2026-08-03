@@ -1,0 +1,78 @@
+import { describe, expect, it } from "vitest";
+import { StaticEssence } from "./model/essences/StaticEssence";
+import { Tile } from "./model/Tile";
+import { TileData } from "./model/TileData";
+
+describe("TileData", () => {
+  it("initializes every effective property from one shared input contract", () => {
+    const data = new TileData({ life: 80, maximumLife: 120 });
+
+    expect(data.getLife()).toBe(80);
+    expect(data.getMaximumLife()).toBe(120);
+    expect(data.toProperties()).toEqual({ life: 80, maximumLife: 120 });
+  });
+
+  it("applies independent deltas to effective properties", () => {
+    const data = new TileData({ life: 80, maximumLife: 120 });
+
+    data.apply({ life: -10, maximumLife: 30 });
+
+    expect(data.toProperties()).toEqual({ life: 70, maximumLife: 150 });
+  });
+
+  it("creates independent data instances for tiles of the same essence", () => {
+    const essence = new StaticEssence();
+    const first = new Tile(1, 1, true, essence);
+    const second = new Tile(2, 2, true, essence);
+
+    first.getData()?.apply({ life: -40 });
+
+    expect(first.getData()).toBeInstanceOf(TileData);
+    expect(second.getData()).toBeInstanceOf(TileData);
+    expect(first.getData()).not.toBe(second.getData());
+    expect(first.getData()?.getLife()).toBe(60);
+    expect(second.getData()?.getLife()).toBe(100);
+  });
+
+  it("removes effective data when its tile dies", () => {
+    const tile = new Tile(1, 1, true, new StaticEssence());
+
+    tile.setAlive(false);
+
+    expect(tile.getData()).toBeNull();
+  });
+
+  it("keeps effective properties nested in the tile snapshot", () => {
+    const essence = new StaticEssence();
+    const tile = new Tile(1, 2, true, essence);
+
+    expect(tile.toSnapshot()).toEqual({
+      x: 1,
+      y: 2,
+      alive: true,
+      essence,
+      data: {
+        life: 100,
+        maximumLife: 100,
+      },
+    });
+  });
+
+  it("validates constructor values", () => {
+    expect(() => new TileData({ life: Number.NaN, maximumLife: 100 })).toThrow(
+      RangeError,
+    );
+    expect(() => new TileData({ life: 100, maximumLife: -1 })).toThrow(
+      RangeError,
+    );
+  });
+
+  it("rejects invalid deltas without partially mutating its data", () => {
+    const data = new TileData({ life: 80, maximumLife: 100 });
+
+    expect(() => data.apply({ life: -10, maximumLife: -101 })).toThrow(
+      RangeError,
+    );
+    expect(data.toProperties()).toEqual({ life: 80, maximumLife: 100 });
+  });
+});

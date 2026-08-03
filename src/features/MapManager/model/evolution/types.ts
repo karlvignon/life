@@ -1,5 +1,4 @@
 import type { CellIndex, GridBounds } from "../../../../core/types/grid";
-import type { WeatherSnapshot } from "../../../../core/types/weather";
 import type { Essence } from "../essences/Essence";
 
 export interface LivingCellEntry {
@@ -18,7 +17,6 @@ export interface EvolutionInput {
   readonly bounds: GridBounds;
   readonly living: ReadonlyArray<LivingCellEntry>;
   readonly currentCycle: number;
-  readonly weather: Readonly<WeatherSnapshot>;
   readonly essenceOrder: ReadonlyArray<Essence>;
 }
 

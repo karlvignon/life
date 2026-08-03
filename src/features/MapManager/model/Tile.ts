@@ -1,16 +1,12 @@
 import type { Essence, EssencePropertiesDelta } from "./essences/Essence";
+import { Modifier, type ModifierAuthor } from "./modifiers/Modifier";
+import { TileData, type TileDataProperties } from "./TileData";
 import type { TileSnapshot } from "../types";
 
-export interface TilePropertiesSnapshot {
-  readonly life: number;
-  readonly maximumLife: number;
-}
-
 export class Tile {
-  private alive = false;
   private essence: Essence | null = null;
-  private life = 0;
-  private maximumLife = 0;
+  private data: TileData | null = null;
+  private modifiers: Modifier[] = [];
 
   constructor(
     public readonly x: number,
@@ -22,56 +18,60 @@ export class Tile {
   }
 
   isAlive(): boolean {
-    return this.alive;
+    return this.essence !== null && this.data !== null;
   }
 
   getEssence(): Essence | null {
     return this.essence;
   }
 
-  getLife(): number {
-    return this.life;
+  getData(): TileData | null {
+    return this.data;
   }
 
-  getMaximumLife(): number {
-    return this.maximumLife;
+  getModifiers(): ReadonlyArray<Modifier> {
+    return this.modifiers;
   }
 
-  hasPositiveLife(): boolean {
-    return this.life > 0;
+  addModifier(modifier: Modifier): void {
+    this.modifiers.push(modifier);
   }
 
-  apply({ life }: EssencePropertiesDelta): void {
-    if (!this.alive) {
+  removeModifiersAuthoredBy(author: ModifierAuthor): void {
+    this.modifiers = this.modifiers.filter(
+      (modifier) => !modifier.isAuthoredBy(author),
+    );
+  }
+
+  clearModifiers(): void {
+    this.modifiers = [];
+  }
+
+  apply(delta: EssencePropertiesDelta): void {
+    if (!this.data) {
       return;
     }
 
-    this.life += life;
+    this.data.apply(delta);
   }
 
   setAlive(
     alive: boolean,
     essence?: Essence,
-    properties?: TilePropertiesSnapshot,
+    properties?: TileDataProperties,
   ): void {
     if (alive && essence) {
-      const shouldInitialize = !this.alive || this.essence !== essence;
-      this.alive = true;
+      const shouldInitialize = !this.isAlive() || this.essence !== essence;
       this.essence = essence;
 
       if (properties) {
-        this.life = properties.life;
-        this.maximumLife = properties.maximumLife;
+        this.data = new TileData(properties);
       } else if (shouldInitialize) {
-        const initialProperties = essence.getInitialProperties();
-        this.life = initialProperties.life;
-        this.maximumLife = initialProperties.life;
+        this.data = essence.createTileData();
       }
     } else if (!alive) {
-      this.alive = false;
       this.essence = null;
-      this.life = 0;
-      this.maximumLife = 0;
+      this.data = null;
     }
   }
 
@@ -79,10 +79,9 @@ export class Tile {
     return {
       x: this.x,
       y: this.y,
-      alive: this.alive,
+      alive: this.isAlive(),
       essence: this.essence,
-      life: this.life,
-      maximumLife: this.maximumLife,
+      data: this.data?.toProperties() ?? null,
     };
   }
 }

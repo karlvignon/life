@@ -28,6 +28,11 @@ export type { CellOffset } from "../../core/types/grid";
 export { Placeable } from "./model/Placeable";
 export { Tile } from "./model/Tile";
 export {
+  TileData,
+  type TileDataDelta,
+  type TileDataProperties,
+} from "./model/TileData";
+export {
   Essence,
   type EssenceProperties,
   type EssencePropertiesDelta,
@@ -52,6 +57,18 @@ export {
   DEFAULT_STATIC_COLOR,
   StaticEssence,
 } from "./model/essences/StaticEssence";
+export {
+  DEFAULT_TREE_COLOR,
+  TREE_NEIGHBOR_DEGREES_MODIFIER,
+  TreeEssence,
+} from "./model/essences/TreeEssence";
+export {
+  Modifier,
+  type ModifierAuthor,
+  type ModifierDefinition,
+  type ModifierMode,
+  type WeatherProperty,
+} from "./model/modifiers/Modifier";
 export { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
 export { HighLifeReplicator } from "./model/patterns/HighLifeReplicator";
 export { Pattern } from "./model/patterns/Pattern";
@@ -238,6 +255,7 @@ export class MapManager {
       placeable.getEssence(),
     );
     this.queueDelta(changes);
+    this.tileInfoDirty = this.lastHoveredTile !== null;
   }
 
   clearMap(): void {
@@ -247,6 +265,7 @@ export class MapManager {
 
     const changes = this.model.clearLivingCells();
     this.queueDelta(changes);
+    this.tileInfoDirty = this.lastHoveredTile !== null;
   }
 
   destroy(): void {

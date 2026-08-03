@@ -262,8 +262,8 @@ describe("MapModel", () => {
 
     model.step(1, weatherForCycle(1));
 
-    expect(model.getTile(1, 1)?.getLife()).toBe(60);
-    expect(model.getTile(2, 2)?.getLife()).toBe(90);
+    expect(model.getTile(1, 1)?.getData()?.getLife()).toBe(60);
+    expect(model.getTile(2, 2)?.getData()?.getLife()).toBe(90);
   });
 
   it("kills only the cell whose individual life reaches zero", () => {
@@ -283,7 +283,7 @@ describe("MapModel", () => {
 
     expect(model.getTile(1, 1)?.isAlive()).toBe(false);
     expect(model.getTile(2, 2)?.isAlive()).toBe(true);
-    expect(model.getTile(2, 2)?.getLife()).toBe(90);
+    expect(model.getTile(2, 2)?.getData()?.getLife()).toBe(90);
     expect(model.getLivingCount()).toBe(1);
   });
 
@@ -327,7 +327,7 @@ describe("MapModel", () => {
       });
     }
 
-    expect(model.getTile(2, 2)?.getLife()).toBe(90);
+    expect(model.getTile(2, 2)?.getData()?.getLife()).toBe(90);
     expect(model.getTile(2, 2)?.isAlive()).toBe(true);
   });
 
@@ -390,8 +390,8 @@ describe("MapModel", () => {
 
     model.getTile(1, 1)?.apply({ life: -40 });
 
-    expect(model.getTile(1, 1)?.getLife()).toBe(60);
-    expect(model.getTile(2, 2)?.getLife()).toBe(100);
+    expect(model.getTile(1, 1)?.getData()?.getLife()).toBe(60);
+    expect(model.getTile(2, 2)?.getData()?.getLife()).toBe(100);
     expect(model.getTile(1, 1)?.getEssence()).toBe(sharedEssence);
     expect(model.getTile(2, 2)?.getEssence()).toBe(sharedEssence);
   });
@@ -403,8 +403,8 @@ describe("MapModel", () => {
 
     model.resize(8, 8);
 
-    expect(model.getTile(1, 1)?.getLife()).toBe(60);
-    expect(model.getTile(1, 1)?.getMaximumLife()).toBe(100);
+    expect(model.getTile(1, 1)?.getData()?.getLife()).toBe(60);
+    expect(model.getTile(1, 1)?.getData()?.getMaximumLife()).toBe(100);
   });
 
   it("rejects invalid cycle values", () => {

@@ -1,6 +1,7 @@
 import type { Essence, Pattern } from "../MapManager/main";
 
-export type EssenceId = "game-of-life" | "high-life" | "static" | "mushroom";
+export type EssenceId =
+  "game-of-life" | "high-life" | "static" | "mushroom" | "tree";
 
 export interface EssenceDefinition {
   id: EssenceId;

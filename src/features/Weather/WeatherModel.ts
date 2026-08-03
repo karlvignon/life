@@ -3,6 +3,9 @@ import type { WeatherSnapshot, WeatherTransition } from "./types";
 export class WeatherModel {
   private currentWindStrength = 0;
   private currentDegrees = 0;
+  private seasonalWindStrength = 0;
+  private seasonalDegrees = 0;
+  private overrideEnabled = false;
 
   updateFromSeason(transition: WeatherTransition): void {
     validateTransition(transition);
@@ -14,16 +17,38 @@ export class WeatherModel {
     const currentDegreeTarget = midpoint(transition.currentSeason.degreeRange);
     const nextDegreeTarget = midpoint(transition.nextSeason.degreeRange);
 
-    this.currentWindStrength = lerp(
+    this.seasonalWindStrength = lerp(
       currentWindTarget,
       nextWindTarget,
       transition.progress,
     );
-    this.currentDegrees = lerp(
+    this.seasonalDegrees = lerp(
       currentDegreeTarget,
       nextDegreeTarget,
       transition.progress,
     );
+
+    if (!this.overrideEnabled) {
+      this.currentWindStrength = this.seasonalWindStrength;
+      this.currentDegrees = this.seasonalDegrees;
+    }
+  }
+
+  setOverride(snapshot: WeatherSnapshot): void {
+    validateSnapshot(snapshot);
+    this.overrideEnabled = true;
+    this.currentWindStrength = snapshot.windStrength;
+    this.currentDegrees = snapshot.degrees;
+  }
+
+  clearOverride(): void {
+    this.overrideEnabled = false;
+    this.currentWindStrength = this.seasonalWindStrength;
+    this.currentDegrees = this.seasonalDegrees;
+  }
+
+  isOverrideEnabled(): boolean {
+    return this.overrideEnabled;
   }
 
   getCurrentWindStrength(): number {
@@ -81,5 +106,14 @@ function validateRange(range: readonly [number, number], label: string): void {
     range[0] > range[1]
   ) {
     throw new RangeError(`${label} must contain two finite ordered values`);
+  }
+}
+
+function validateSnapshot(snapshot: WeatherSnapshot): void {
+  if (
+    !Number.isFinite(snapshot.windStrength) ||
+    !Number.isFinite(snapshot.degrees)
+  ) {
+    throw new RangeError("weather override values must be finite");
   }
 }

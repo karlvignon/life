@@ -15,3 +15,7 @@ export interface WeatherSnapshot {
   windStrength: number;
   degrees: number;
 }
+
+export interface WeatherOverride extends WeatherSnapshot {
+  enabled: boolean;
+}

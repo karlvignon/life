@@ -20,6 +20,7 @@ export class WeatherManager {
   private readonly uiRoot = new Container();
   private readonly view: WeatherView;
   private readonly unsubscribeSeasonProgressed: () => void;
+  private readonly unsubscribeWeatherOverride: () => void;
   private renderDirty = true;
 
   private readonly onResize = (): void => {
@@ -41,6 +42,18 @@ export class WeatherManager {
       GameEventMap["game:season-progressed"]
     >("game:season-progressed", (transition) => {
       this.model.updateFromSeason(transition);
+      this.renderDirty = true;
+      this.emitWeatherChanged();
+    });
+    this.unsubscribeWeatherOverride = this.gameEventBus.on<
+      GameEventMap["dev:weather-override-changed"]
+    >("dev:weather-override-changed", (override) => {
+      if (override.enabled) {
+        this.model.setOverride(override);
+      } else {
+        this.model.clearOverride();
+      }
+
       this.renderDirty = true;
       this.emitWeatherChanged();
     });
@@ -72,6 +85,7 @@ export class WeatherManager {
   destroy(): void {
     window.removeEventListener("resize", this.onResize);
     this.unsubscribeSeasonProgressed();
+    this.unsubscribeWeatherOverride();
     this.view.destroy();
     this.uiRoot.destroy({ children: true });
     this.app.stage.removeChild(this.uiRoot);

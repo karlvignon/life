@@ -54,10 +54,15 @@ export class Game {
       this.eventBus,
       config.weather,
     );
-    this.seasonManager = new SeasonManager(this.eventBus, config.season);
     this.devUIManager = config.devOptions?.display.devUi
-      ? new DevUIManager(app)
+      ? new DevUIManager(app, this.eventBus)
       : null;
+    if (this.devUIManager) {
+      this.cellCreatorManager.registerUiRootToIgnore(
+        this.devUIManager.getUiRoot(),
+      );
+    }
+    this.seasonManager = new SeasonManager(this.eventBus, config.season);
 
     this.app.ticker.add((ticker) => {
       this.update(ticker.deltaMS);

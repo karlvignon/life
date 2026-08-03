@@ -44,6 +44,35 @@ describe("WeatherModel", () => {
     });
   });
 
+  it("keeps override values while seasons evolve", () => {
+    const model = new WeatherModel();
+    model.updateFromSeason(transition);
+    model.setOverride({ windStrength: 42, degrees: -5 });
+
+    model.updateFromSeason({ ...transition, progress: 1 });
+
+    expect(model.getSnapshot()).toEqual({
+      windStrength: 42,
+      degrees: -5,
+    });
+    expect(model.isOverrideEnabled()).toBe(true);
+  });
+
+  it("resumes at the latest seasonal values when override is cleared", () => {
+    const model = new WeatherModel();
+    model.updateFromSeason(transition);
+    model.setOverride({ windStrength: 42, degrees: -5 });
+    model.updateFromSeason({ ...transition, progress: 1 });
+
+    model.clearOverride();
+
+    expect(model.getSnapshot()).toEqual({
+      windStrength: 20,
+      degrees: 30,
+    });
+    expect(model.isOverrideEnabled()).toBe(false);
+  });
+
   it("rejects invalid ranges and transition progress", () => {
     const model = new WeatherModel();
 
@@ -58,6 +87,9 @@ describe("WeatherModel", () => {
           degreeRange: [20, 10],
         },
       }),
+    ).toThrow(RangeError);
+    expect(() =>
+      model.setOverride({ windStrength: Number.NaN, degrees: 20 }),
     ).toThrow(RangeError);
   });
 });

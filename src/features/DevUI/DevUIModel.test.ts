@@ -40,4 +40,36 @@ describe("DevUIModel", () => {
 
     expect(model.getAverageRenderTimeMs()).toBe(0);
   });
+
+  it("tracks live weather while override is disabled", () => {
+    const model = new DevUIModel();
+
+    model.syncWeather({ windStrength: 12.5, degrees: 21 });
+
+    expect(model.getWindStrength()).toBe(12.5);
+    expect(model.getDegrees()).toBe(21);
+  });
+
+  it("keeps manual weather values while override is enabled", () => {
+    const model = new DevUIModel();
+    model.syncWeather({ windStrength: 12.5, degrees: 21 });
+    model.setWeatherOverrideEnabled(true);
+    model.setWindStrength(40);
+    model.setDegrees(-10);
+
+    model.syncWeather({ windStrength: 4, degrees: 30 });
+
+    expect(model.getWindStrength()).toBe(40);
+    expect(model.getDegrees()).toBe(-10);
+  });
+
+  it("clamps manual weather values to slider ranges", () => {
+    const model = new DevUIModel();
+
+    model.setWindStrength(100);
+    model.setDegrees(-100);
+
+    expect(model.getWindStrength()).toBe(50);
+    expect(model.getDegrees()).toBe(-20);
+  });
 });

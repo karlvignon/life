@@ -22,7 +22,10 @@ describe("EvolutionEngine", () => {
     });
 
     const coords = [...nextLiving.keys()]
-      .map((index) => ({ x: index % bounds.width, y: Math.floor(index / bounds.width) }))
+      .map((index) => ({
+        x: index % bounds.width,
+        y: Math.floor(index / bounds.width),
+      }))
       .sort((a, b) => a.x - b.x || a.y - b.y);
 
     expect(coords).toEqual([

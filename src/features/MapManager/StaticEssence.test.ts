@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { gameCycle } from "../../core/GameCycle";
 import { packIndex } from "../../core/types/grid";
 import { Builder } from "./model/Builder";
 import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
@@ -14,6 +15,10 @@ import { SingleCellPattern } from "./model/patterns/SingleCellPattern";
 describe("StaticEssence", () => {
   const essence = new StaticEssence();
   const bounds = { width: 5, height: 5 };
+
+  afterEach(() => {
+    gameCycle.reset();
+  });
 
   it("uses the default orange color", () => {
     expect(essence.color).toBe(DEFAULT_STATIC_COLOR);
@@ -53,7 +58,7 @@ describe("StaticEssence", () => {
       new Placeable(new BlinkerOscillator(conwayEssence), 5, 1),
     );
 
-    model.step();
+    model.step(gameCycle.advance());
 
     expect(model.getTile(1, 1)?.isAlive()).toBe(true);
     expect(model.getTile(1, 1)?.getEssence()).toBe(staticEssence);

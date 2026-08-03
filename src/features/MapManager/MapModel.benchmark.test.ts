@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { gameCycle } from "../../core/GameCycle";
 import { Builder } from "./model/Builder";
 import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 import { MapModel } from "./MapModel";
@@ -8,6 +9,10 @@ import { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
 describe("MapModel performance baselines", () => {
   const essence = new GameOfLifeEssence();
   const builder = new Builder();
+
+  afterEach(() => {
+    gameCycle.reset();
+  });
 
   it("reports sparse living count on large grids", () => {
     const model = new MapModel(120, 67);
@@ -30,7 +35,7 @@ describe("MapModel performance baselines", () => {
     let maxDelta = 0;
 
     for (let i = 0; i < 100; i++) {
-      const delta = model.step();
+      const delta = model.step(gameCycle.advance());
       maxDelta = Math.max(maxDelta, delta.changes.length);
     }
 
@@ -39,7 +44,7 @@ describe("MapModel performance baselines", () => {
 
   it("returns empty delta when stepping an empty grid", () => {
     const model = new MapModel(120, 67);
-    const delta = model.step();
+    const delta = model.step(gameCycle.advance());
 
     expect(delta.changes).toEqual([]);
   });

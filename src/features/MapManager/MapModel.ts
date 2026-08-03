@@ -21,7 +21,6 @@ export class MapModel {
   private _gridHeight: number;
   private tiles: Tile[][] = [];
   private readonly registry = new LivingCellRegistry();
-  private currentCycle = 0;
   private renderRevision = 0;
 
   constructor(gridWidth: number, gridHeight: number) {
@@ -36,10 +35,6 @@ export class MapModel {
 
   get gridHeight(): number {
     return this._gridHeight;
-  }
-
-  getCurrentCycle(): number {
-    return this.currentCycle;
   }
 
   getRenderRevision(): number {
@@ -194,8 +189,10 @@ export class MapModel {
     };
   }
 
-  step(): CellChangeSet {
-    this.currentCycle++;
+  step(currentCycle: number): CellChangeSet {
+    if (!Number.isSafeInteger(currentCycle) || currentCycle < 1) {
+      throw new RangeError("currentCycle must be a positive safe integer");
+    }
 
     const living = this.registry.snapshot();
 
@@ -206,7 +203,7 @@ export class MapModel {
     const { nextLiving } = computeNextGeneration({
       bounds: { width: this._gridWidth, height: this._gridHeight },
       living,
-      currentCycle: this.currentCycle,
+      currentCycle,
       essenceOrder: this.registry.getEssenceOrder(),
     });
 

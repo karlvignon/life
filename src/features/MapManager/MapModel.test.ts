@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { gameCycle } from "../../core/GameCycle";
 import { Builder } from "./model/Builder";
 import {
   DEFAULT_GAME_OF_LIFE_COLOR,
@@ -19,9 +20,17 @@ import {
 } from "./model/essences/MushroomEssence";
 import { SingleCellPattern } from "./model/patterns/SingleCellPattern";
 
+function advanceStep(model: MapModel) {
+  return model.step(gameCycle.advance());
+}
+
 describe("MapModel", () => {
   const essence = new GameOfLifeEssence();
   const builder = new Builder();
+
+  afterEach(() => {
+    gameCycle.reset();
+  });
 
   it("oscillates a blinker over 2 generations", () => {
     const model = new MapModel(5, 5);
@@ -34,7 +43,7 @@ describe("MapModel", () => {
 
     expect(model.getLivingCells()).toHaveLength(3);
 
-    model.step();
+    advanceStep(model);
     const vertical = model
       .getLivingCells()
       .map((t) => ({ x: t.x, y: t.y }))
@@ -45,7 +54,7 @@ describe("MapModel", () => {
       { x: 2, y: 3 },
     ]);
 
-    model.step();
+    advanceStep(model);
     const horizontal = model
       .getLivingCells()
       .map((t) => ({ x: t.x, y: t.y }))
@@ -64,7 +73,7 @@ describe("MapModel", () => {
       Placeable.centerOnGrid(new BlinkerOscillator(essence), 5, 5),
     );
 
-    const delta = model.step();
+    const delta = advanceStep(model);
 
     expect(delta.changes.length).toBeLessThanOrEqual(4);
     expect(delta.changes.length).toBeGreaterThan(0);
@@ -78,7 +87,7 @@ describe("MapModel", () => {
       5,
     );
     builder.build(model, placeable);
-    model.step();
+    advanceStep(model);
 
     for (const tile of model.getLivingCells()) {
       expect(tile.getEssence()).toBe(essence);
@@ -111,7 +120,7 @@ describe("MapModel", () => {
 
     expect(model.getLivingCells()).toHaveLength(6);
 
-    model.step();
+    advanceStep(model);
 
     const groupA = model
       .getLivingCells()
@@ -130,7 +139,7 @@ describe("MapModel", () => {
     const model = new MapModel(5, 5);
     builder.place(model, new Placeable(new BlinkerOscillator(essenceA), 1, 1));
 
-    model.step();
+    advanceStep(model);
 
     for (const tile of model.getLivingCells()) {
       expect(tile.getEssence()).toBe(essenceA);
@@ -159,7 +168,7 @@ describe("MapModel", () => {
       model.setCellAlive(x, y, essenceB);
     }
 
-    model.step();
+    advanceStep(model);
 
     const birthTarget = model.getTile(5, 4);
     expect(birthTarget?.isAlive()).toBe(true);
@@ -192,17 +201,17 @@ describe("MapModel", () => {
     expect(conwayEssence.color).not.toBe(highLifeEssence.color);
   });
 
-  it("increments the current cycle on each step", () => {
+  it("advances the global cycle counter when stepping", () => {
     const model = new MapModel(5, 5);
 
-    expect(model.getCurrentCycle()).toBe(0);
-    model.step();
-    expect(model.getCurrentCycle()).toBe(1);
-    model.step();
-    expect(model.getCurrentCycle()).toBe(2);
+    expect(gameCycle.getCurrentCycle()).toBe(0);
+    model.step(gameCycle.advance());
+    expect(gameCycle.getCurrentCycle()).toBe(1);
+    model.step(gameCycle.advance());
+    expect(gameCycle.getCurrentCycle()).toBe(2);
   });
 
-  it("propagates Mushroom cells on cycle 50 with connected neighbors", () => {
+  it("propagates Mushroom cells on propagation cycles with connected neighbors", () => {
     const mushroomEssence = new MushroomEssence();
     const model = new MapModel(7, 7);
 
@@ -214,15 +223,15 @@ describe("MapModel", () => {
       model.setCellAlive(x, y, mushroomEssence);
     }
 
-    for (let i = 0; i < 49; i++) {
-      model.step();
+    for (let i = 0; i < 9; i++) {
+      advanceStep(model);
     }
 
     expect(model.getTile(3, 3)?.isAlive()).toBe(false);
 
-    model.step();
+    advanceStep(model);
 
-    expect(model.getCurrentCycle()).toBe(50);
+    expect(gameCycle.getCurrentCycle()).toBe(10);
     expect(model.getTile(3, 3)?.isAlive()).toBe(true);
     expect(model.getTile(3, 3)?.getEssence()).toBe(mushroomEssence);
   });
@@ -242,7 +251,7 @@ describe("MapModel", () => {
     }
 
     for (let i = 0; i < 50; i++) {
-      model.step();
+      advanceStep(model);
     }
 
     expect(model.getTile(3, 3)?.isAlive()).toBe(false);
@@ -271,5 +280,11 @@ describe("MapModel", () => {
 
     expect(model.getLivingCount()).toBe(1);
     expect(model.getLivingCells()).toHaveLength(1);
+  });
+
+  it("rejects invalid cycle values", () => {
+    const model = new MapModel(5, 5);
+    expect(() => model.step(0)).toThrow(RangeError);
+    expect(() => model.step(-1)).toThrow(RangeError);
   });
 });

@@ -5,6 +5,7 @@ import {
   Rectangle,
 } from "pixi.js";
 import type { EventBus } from "../../core/EventBus";
+import { gameCycle } from "../../core/GameCycle";
 import type { GameEventMap } from "../../core/types/gameEvents";
 import { mergeChangeSets } from "./model/CellChangeSet";
 import type { CellChangeSet } from "./model/CellChangeSet";
@@ -148,7 +149,8 @@ export class MapManager {
       this.evolutionAccumulatorMs >= stepIntervalMs &&
       stepsThisFrame < this.maxStepsPerFrame
     ) {
-      const stepDelta = this.model.step();
+      const currentCycle = gameCycle.advance();
+      const stepDelta = this.model.step(currentCycle);
       frameChanges = mergeChangeSets(frameChanges, stepDelta);
       this.evolutionAccumulatorMs -= stepIntervalMs;
       stepsThisFrame++;

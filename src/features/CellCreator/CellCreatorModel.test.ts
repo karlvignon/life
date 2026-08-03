@@ -29,7 +29,7 @@ describe("CellCreatorModel", () => {
   it("starts with the provided essence and no selected pattern", () => {
     const model = new CellCreatorModel(conwayDefinition);
 
-    expect(model.getSelectedEssence()).toBe(conwayDefinition.essence);
+    expect(model.getSelectedEssence()).toBeInstanceOf(GameOfLifeEssence);
     expect(model.getSelectedPatternId()).toBeNull();
     expect(model.getSelectedPlaceable()).toBeNull();
   });
@@ -41,7 +41,7 @@ describe("CellCreatorModel", () => {
 
     expect(model.getSelectedPatternId()).toBe(cellPatternDefinition.id);
     expect(model.getSelectedPlaceable()?.getEssence()).toBe(
-      conwayDefinition.essence,
+      model.getSelectedEssence(),
     );
   });
 
@@ -54,8 +54,9 @@ describe("CellCreatorModel", () => {
 
     expect(model.getSelectedPatternId()).toBe(cellPatternDefinition.id);
     expect(model.getSelectedPlaceable()?.getEssence()).toBe(
-      highLifeDefinition.essence,
+      model.getSelectedEssence(),
     );
+    expect(model.getSelectedEssence()).toBeInstanceOf(HighLifeEssence);
     expect(model.getPreviewPlaceable()?.getOrigin()).toEqual({ x: 4, y: 7 });
   });
 
@@ -67,6 +68,18 @@ describe("CellCreatorModel", () => {
 
     expect(model.getSelectedPatternId()).toBeNull();
     expect(model.getSelectedPlaceable()).toBeNull();
-    expect(model.getSelectedEssence()).toBe(conwayDefinition.essence);
+    expect(model.getSelectedEssence()).toBeInstanceOf(GameOfLifeEssence);
+  });
+
+  it("creates placements from the selected stateless essence definition", () => {
+    const model = new CellCreatorModel(conwayDefinition);
+    model.toggleSelectedPattern(cellPatternDefinition);
+    model.setPreviewOrigin({ x: 2, y: 3 });
+
+    const firstPlacement = model.createPlacement();
+    const secondPlacement = model.createPlacement();
+    expect(firstPlacement?.getOrigin()).toEqual({ x: 2, y: 3 });
+    expect(firstPlacement?.getEssence()).toBe(conwayDefinition.essence);
+    expect(secondPlacement?.getEssence()).toBe(conwayDefinition.essence);
   });
 });

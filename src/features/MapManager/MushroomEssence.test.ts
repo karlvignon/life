@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_MUSHROOM_COLOR,
   makeMushroomInput,
+  MUSHROOM_COLD_LIFE_LOSS,
   MUSHROOM_COLD_THRESHOLD_DEGREES,
+  MUSHROOM_WEATHER_REPERCUSSION_INTERVAL,
   MushroomEssence,
 } from "./model/essences/MushroomEssence";
 import { unpackAliveCells } from "./model/essences/GameOfLifeEssence";
@@ -30,96 +32,47 @@ describe("MushroomEssence", () => {
     ]);
   });
 
-  it.each([
-    ["one", [{ x: 2, y: 2 }]],
-    [
-      "two",
-      [
-        { x: 2, y: 2 },
-        { x: 3, y: 2 },
-      ],
-    ],
-  ])(
-    "kills a cold mushroom with only %s connected mushroom neighbor(s)",
-    (_label, neighbors) => {
-      const result = essence.evolve(
-        makeMushroomInput(
-          bounds,
-          [{ x: 3, y: 3 }, ...neighbors],
-          [],
-          50,
-          MUSHROOM_COLD_THRESHOLD_DEGREES - 0.1,
-        ),
-      );
-
-      expect(
-        unpackAliveCells(result.aliveIndices, bounds.width),
-      ).not.toContainEqual({ x: 3, y: 3 });
-    },
-  );
-
-  it("keeps cold mushrooms with three connected mushroom neighbors", () => {
+  it("keeps weather out of births and deaths", () => {
     const result = essence.evolve(
-      makeMushroomInput(
-        bounds,
-        [
-          { x: 3, y: 3 },
-          { x: 2, y: 2 },
-          { x: 3, y: 2 },
-          { x: 2, y: 3 },
-        ],
-        [],
-        50,
-        MUSHROOM_COLD_THRESHOLD_DEGREES - 0.1,
-      ),
+      makeMushroomInput(bounds, [{ x: 3, y: 3 }], [], 50),
     );
 
-    expect(unpackAliveCells(result.aliveIndices, bounds.width)).toContainEqual({
-      x: 3,
-      y: 3,
-    });
+    expect(unpackAliveCells(result.aliveIndices, bounds.width)).toEqual([
+      { x: 3, y: 3 },
+    ]);
   });
 
-  it("does not birth a cold mushroom with only 3 connected neighbors", () => {
-    const result = essence.evolve(
-      makeMushroomInput(
-        bounds,
-        [
-          { x: 2, y: 2 },
-          { x: 3, y: 2 },
-          { x: 2, y: 3 },
-        ],
-        [],
-        50,
-        MUSHROOM_COLD_THRESHOLD_DEGREES - 0.1,
-      ),
-    );
+  it("returns a life loss every 10 cycles below 25 degrees", () => {
+    const mushroom = new MushroomEssence();
+
+    const delta = mushroom.getWeatherRepercussion({
+      cycle: MUSHROOM_WEATHER_REPERCUSSION_INTERVAL,
+      season: "Winter",
+      windStrength: 0,
+      degrees: MUSHROOM_COLD_THRESHOLD_DEGREES - 0.1,
+    });
+
+    expect(delta).toEqual({ life: -MUSHROOM_COLD_LIFE_LOSS });
+  });
+
+  it("does not lose life outside cold weather intervals", () => {
+    const mushroom = new MushroomEssence();
+    const baseWeather = {
+      season: "Spring" as const,
+      windStrength: 0,
+      degrees: MUSHROOM_COLD_THRESHOLD_DEGREES - 0.1,
+    };
 
     expect(
-      unpackAliveCells(result.aliveIndices, bounds.width),
-    ).not.toContainEqual({ x: 3, y: 3 });
-  });
-
-  it("births a cold mushroom with exactly 4 connected neighbors", () => {
-    const result = essence.evolve(
-      makeMushroomInput(
-        bounds,
-        [
-          { x: 2, y: 2 },
-          { x: 3, y: 2 },
-          { x: 2, y: 3 },
-          { x: 4, y: 3 },
-        ],
-        [],
-        50,
-        MUSHROOM_COLD_THRESHOLD_DEGREES - 0.1,
-      ),
-    );
-
-    expect(unpackAliveCells(result.aliveIndices, bounds.width)).toContainEqual({
-      x: 3,
-      y: 3,
-    });
+      mushroom.getWeatherRepercussion({ ...baseWeather, cycle: 9 }),
+    ).toEqual({ life: 0 });
+    expect(
+      mushroom.getWeatherRepercussion({
+        ...baseWeather,
+        cycle: MUSHROOM_WEATHER_REPERCUSSION_INTERVAL,
+        degrees: MUSHROOM_COLD_THRESHOLD_DEGREES,
+      }),
+    ).toEqual({ life: 0 });
   });
 
   it("births an empty cell with exactly 3 connected mushroom neighbors", () => {

@@ -3,6 +3,7 @@ import type { WeatherSnapshot } from "../../core/types/weather";
 import type { Essence } from "./model/essences/Essence";
 import {
   emptyChangeSet,
+  mergeChangeSets,
   type CellChange,
   type CellChangeSet,
 } from "./model/CellChangeSet";
@@ -70,8 +71,11 @@ export class MapModel {
   getLivingSnapshots(): TileSnapshot[] {
     const snapshots: TileSnapshot[] = [];
 
-    this.registry.forEach((_index, essence, x, y) => {
-      snapshots.push({ x, y, alive: true, essence });
+    this.registry.forEach((_index, _essence, x, y) => {
+      const tile = this.getTile(x, y);
+      if (tile?.isAlive()) {
+        snapshots.push(tile.toSnapshot());
+      }
     }, this._gridWidth);
 
     return snapshots;
@@ -171,7 +175,10 @@ export class MapModel {
       }
 
       const index = packIndex(cell.x, cell.y, this._gridWidth);
-      tile.setAlive(true, cell.essence);
+      tile.setAlive(true, cell.essence, {
+        life: cell.life,
+        maximumLife: cell.maximumLife,
+      });
       this.registry.set(index, cell.essence);
       placeChanges.push({
         x: cell.x,
@@ -211,20 +218,15 @@ export class MapModel {
       bounds: { width: this._gridWidth, height: this._gridHeight },
       living,
       currentCycle,
-      weather,
       essenceOrder: this.registry.getEssenceOrder(),
     });
 
-    const rawChanges = this.registry.applyNextLiving(
+    const evolutionChanges = this.registry.applyNextLiving(
       nextLiving,
       this._gridWidth,
     );
 
-    if (rawChanges.length === 0) {
-      return emptyChangeSet();
-    }
-
-    for (const change of rawChanges) {
+    for (const change of evolutionChanges) {
       const tile = this.getTile(change.x, change.y);
       if (!tile) {
         continue;
@@ -237,16 +239,55 @@ export class MapModel {
       }
     }
 
-    this.renderRevision++;
+    // Phase 2 : chaque cellule applique indépendamment les répercussions météo,
+    // après que toutes les naissances et morts d'évolution ont été appliquées.
+    this.registry.forEach((_index, essence, x, y) => {
+      this.getTile(x, y)?.apply(essence.getWeatherRepercussion(weather));
+    }, this._gridWidth);
 
-    return {
-      changes: rawChanges.map((change) => ({
-        x: change.x,
-        y: change.y,
-        alive: change.nextAlive,
-        essence: change.nextEssence,
-      })),
-    };
+    const survivingLiving = new Map(
+      this.registry
+        .snapshot()
+        .filter(({ index }) => {
+          const x = index % this._gridWidth;
+          const y = Math.floor(index / this._gridWidth);
+          return this.getTile(x, y)?.hasPositiveLife() ?? false;
+        })
+        .map(({ index, essence }) => [index, essence] as const),
+    );
+    const weatherDeathChanges = this.registry.applyNextLiving(
+      survivingLiving,
+      this._gridWidth,
+    );
+
+    for (const change of weatherDeathChanges) {
+      this.getTile(change.x, change.y)?.setAlive(false);
+    }
+
+    const changeSet = mergeChangeSets(
+      {
+        changes: evolutionChanges.map((change) => ({
+          x: change.x,
+          y: change.y,
+          alive: change.nextAlive,
+          essence: change.nextEssence,
+        })),
+      },
+      {
+        changes: weatherDeathChanges.map((change) => ({
+          x: change.x,
+          y: change.y,
+          alive: false,
+          essence: null,
+        })),
+      },
+    );
+
+    if (changeSet.changes.length > 0) {
+      this.renderRevision++;
+    }
+
+    return changeSet;
   }
 
   createRenderSnapshot(cellSize: number): MapRenderSnapshot {
@@ -289,7 +330,10 @@ export class MapModel {
       const tile = this.getTile(snapshot.x, snapshot.y);
       if (tile && snapshot.essence) {
         const index = packIndex(snapshot.x, snapshot.y, this._gridWidth);
-        tile.setAlive(true, snapshot.essence);
+        tile.setAlive(true, snapshot.essence, {
+          life: snapshot.life,
+          maximumLife: snapshot.maximumLife,
+        });
         this.registry.set(index, snapshot.essence);
       }
     }

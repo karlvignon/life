@@ -42,12 +42,12 @@ export class CellCreatorManager {
       return;
     }
 
-    const preview = this.model.getPreviewPlaceable();
-    if (!preview) {
+    const placement = this.model.createPlacement();
+    if (!placement) {
       return;
     }
 
-    this.mapManager.placePlaceable(preview);
+    this.mapManager.placePlaceable(placement);
   };
 
   constructor(

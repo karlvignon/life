@@ -30,12 +30,6 @@ describe("StaticEssence", () => {
       aliveIndices,
       currentCycle: 1,
       globalLivingIndices: aliveIndices,
-      weather: {
-        cycle: 1,
-        season: "Spring" as const,
-        windStrength: 12,
-        degrees: 20,
-      },
     };
 
     const first = essence.evolve(input);

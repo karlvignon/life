@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { packIndex } from "../../../../core/types/grid";
 import { GameOfLifeEssence } from "../essences/GameOfLifeEssence";
-import type {
+import {
   Essence,
-  EssenceEvolutionInput,
-  EssenceEvolutionResult,
+  type EssenceEvolutionInput,
+  type EssenceEvolutionResult,
 } from "../essences/Essence";
 import { computeNextGeneration } from "./EvolutionEngine";
 
@@ -23,12 +23,6 @@ describe("EvolutionEngine", () => {
       bounds,
       living,
       currentCycle: 1,
-      weather: {
-        cycle: 1,
-        season: "Spring",
-        windStrength: 12,
-        degrees: 20,
-      },
       essenceOrder: [essence],
     });
 
@@ -46,23 +40,24 @@ describe("EvolutionEngine", () => {
     ]);
   });
 
-  it("shares the exact weather snapshot with every essence group", () => {
-    const receivedWeather: EssenceEvolutionInput["weather"][] = [];
-    const makeEssence = (color: number): Essence => ({
-      color,
+  it("keeps weather outside essence evolution inputs", () => {
+    const receivedInputs: EssenceEvolutionInput[] = [];
+    class InputRecordingEssence extends Essence {
+      constructor(
+        readonly color: number,
+        private readonly receivedInputs: EssenceEvolutionInput[],
+      ) {
+        super();
+      }
+
       evolve(input: EssenceEvolutionInput): EssenceEvolutionResult {
-        receivedWeather.push(input.weather);
+        this.receivedInputs.push(input);
         return { aliveIndices: [...input.aliveIndices] };
-      },
-    });
-    const firstEssence = makeEssence(0x111111);
-    const secondEssence = makeEssence(0x222222);
-    const weather = Object.freeze({
-      cycle: 4,
-      season: "Spring" as const,
-      windStrength: 28,
-      degrees: 6,
-    });
+      }
+    }
+
+    const firstEssence = new InputRecordingEssence(0x111111, receivedInputs);
+    const secondEssence = new InputRecordingEssence(0x222222, receivedInputs);
 
     computeNextGeneration({
       bounds,
@@ -71,12 +66,10 @@ describe("EvolutionEngine", () => {
         { index: packIndex(3, 3, bounds.width), essence: secondEssence },
       ],
       currentCycle: 4,
-      weather,
       essenceOrder: [firstEssence, secondEssence],
     });
 
-    expect(receivedWeather).toHaveLength(2);
-    expect(receivedWeather[0]).toBe(weather);
-    expect(receivedWeather[1]).toBe(weather);
+    expect(receivedInputs).toHaveLength(2);
+    expect(receivedInputs.every((input) => !("weather" in input))).toBe(true);
   });
 });

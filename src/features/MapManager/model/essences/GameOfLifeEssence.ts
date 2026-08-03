@@ -4,19 +4,21 @@ import {
   countMooreNeighborsInSet,
   forEachMooreNeighborIndex,
 } from "../../../../shared/grid/neighbors";
-import type {
+import {
   Essence,
-  EssenceEvolutionInput,
-  EssenceEvolutionResult,
+  type EssenceEvolutionInput,
+  type EssenceEvolutionResult,
 } from "./Essence";
 
 export const DEFAULT_GAME_OF_LIFE_COLOR = 0x00ff88;
 
 /** Règles Conway B3/S23 — chaque groupe évolue indépendamment. */
-export class GameOfLifeEssence implements Essence {
+export class GameOfLifeEssence extends Essence {
   readonly color: number;
+  readonly name: string = "Conway";
 
   constructor(color: number = DEFAULT_GAME_OF_LIFE_COLOR) {
+    super();
     this.color = color;
   }
 

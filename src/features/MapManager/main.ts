@@ -27,7 +27,11 @@ import { computeGridSize, DEFAULT_CELL_SIZE, type MapConfig } from "./types";
 export type { CellOffset } from "../../core/types/grid";
 export { Placeable } from "./model/Placeable";
 export { Tile } from "./model/Tile";
-export type { Essence } from "./model/essences/Essence";
+export {
+  Essence,
+  type EssenceProperties,
+  type EssencePropertiesDelta,
+} from "./model/essences/Essence";
 export {
   DEFAULT_GAME_OF_LIFE_COLOR,
   GameOfLifeEssence,
@@ -39,7 +43,9 @@ export {
 export {
   DEFAULT_MUSHROOM_COLOR,
   MUSHROOM_COLD_THRESHOLD_DEGREES,
+  MUSHROOM_COLD_LIFE_LOSS,
   MUSHROOM_PROPAGATION_INTERVAL,
+  MUSHROOM_WEATHER_REPERCUSSION_INTERVAL,
   MushroomEssence,
 } from "./model/essences/MushroomEssence";
 export {
@@ -79,6 +85,7 @@ export class MapManager {
   private pendingUpdate: MapRenderUpdate | null = null;
   private pendingDelta: MapRenderDelta | null = null;
   private lastHoveredTile: Tile | null = null;
+  private tileInfoDirty = false;
   private chunkRenderDebugEnabled = false;
   private chunkRenderDebugDirty = false;
 
@@ -126,6 +133,7 @@ export class MapManager {
     }
 
     this.queueDelta(this.model.step(currentCycle, weather));
+    this.tileInfoDirty = this.lastHoveredTile !== null;
   }
 
   render(): void {
@@ -154,10 +162,15 @@ export class MapManager {
       );
       this.chunkRenderDebugDirty = false;
     }
+
+    if (this.tileInfoDirty) {
+      this.tileInfoUi.setTile(this.lastHoveredTile);
+      this.tileInfoDirty = false;
+    }
   }
 
   needsRender(): boolean {
-    return this.renderDirty || this.chunkRenderDebugDirty;
+    return this.renderDirty || this.chunkRenderDebugDirty || this.tileInfoDirty;
   }
 
   setChunkRenderDebugEnabled(enabled: boolean): void {

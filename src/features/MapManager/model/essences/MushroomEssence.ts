@@ -1,20 +1,23 @@
 import type { CellIndex, GridBounds } from "../../../../core/types/grid";
+import type { WeatherSnapshot } from "../../../../core/types/weather";
 import { packIndex } from "../../../../core/types/grid";
 import {
   forEachMooreNeighborIndex,
   forEachMooreNeighborInSet,
 } from "../../../../shared/grid/neighbors";
-import type {
+import {
   Essence,
-  EssenceEvolutionInput,
-  EssenceEvolutionResult,
+  type EssenceEvolutionInput,
+  type EssenceEvolutionResult,
+  type EssencePropertiesDelta,
 } from "./Essence";
 
 export const DEFAULT_MUSHROOM_COLOR = 0x8b4513;
 export const MUSHROOM_COLD_THRESHOLD_DEGREES = 25;
 export const MUSHROOM_PROPAGATION_INTERVAL = 10;
-const WARM_PROPAGATION_NEIGHBOR_COUNT = 3;
-const COLD_PROPAGATION_NEIGHBOR_COUNT = 4;
+export const MUSHROOM_COLD_LIFE_LOSS = 10;
+export const MUSHROOM_WEATHER_REPERCUSSION_INTERVAL = 10;
+const PROPAGATION_NEIGHBOR_COUNT = 3;
 const ENEMY_GROUP_SIZE = 3;
 
 function hasConnectedGroupInSet(
@@ -86,17 +89,18 @@ function collectEnemyNeighbors(
   });
 }
 
-/** Propagation lente — naissance et mort tous les 10 cycles selon météo et voisinage. */
-export class MushroomEssence implements Essence {
+/** Propagation lente — naissance et mort tous les 10 cycles selon le voisinage. */
+export class MushroomEssence extends Essence {
   readonly color: number;
+  readonly name: string = "Mushroom";
 
   constructor(color: number = DEFAULT_MUSHROOM_COLOR) {
+    super();
     this.color = color;
   }
 
   evolve(input: EssenceEvolutionInput): EssenceEvolutionResult {
     const { bounds, aliveIndices, currentCycle, globalLivingIndices } = input;
-    const isCold = input.weather.degrees < MUSHROOM_COLD_THRESHOLD_DEGREES;
 
     if (currentCycle % MUSHROOM_PROPAGATION_INTERVAL !== 0) {
       return { aliveIndices: [...aliveIndices] };
@@ -120,27 +124,7 @@ export class MushroomEssence implements Essence {
         enemyNeighborBuffer.length >= ENEMY_GROUP_SIZE &&
         hasAnyConnectedGroupOfSize(enemySet, bounds, ENEMY_GROUP_SIZE);
 
-      mushroomNeighborBuffer.length = 0;
-      forEachMooreNeighborInSet(
-        index,
-        aliveIndices,
-        bounds,
-        (neighborIndex) => {
-          mushroomNeighborBuffer.push(neighborIndex);
-        },
-      );
-
-      const coldNeighborCount = mushroomNeighborBuffer.length;
-      const diesFromColdIsolation =
-        isCold &&
-        (coldNeighborCount === 1 || coldNeighborCount === 2) &&
-        hasAnyConnectedGroupOfSize(
-          new Set(mushroomNeighborBuffer),
-          bounds,
-          coldNeighborCount,
-        );
-
-      if (!diesFromEnemies && !diesFromColdIsolation) {
+      if (!diesFromEnemies) {
         nextAlive.push(index);
       }
     }
@@ -158,10 +142,6 @@ export class MushroomEssence implements Essence {
       });
     }
 
-    const propagationNeighborCount = isCold
-      ? COLD_PROPAGATION_NEIGHBOR_COUNT
-      : WARM_PROPAGATION_NEIGHBOR_COUNT;
-
     for (const candidateIndex of candidates) {
       mushroomNeighborBuffer.length = 0;
 
@@ -175,11 +155,11 @@ export class MushroomEssence implements Essence {
       );
 
       const shouldBirth =
-        mushroomNeighborBuffer.length === propagationNeighborCount &&
+        mushroomNeighborBuffer.length === PROPAGATION_NEIGHBOR_COUNT &&
         hasAnyConnectedGroupOfSize(
           new Set(mushroomNeighborBuffer),
           bounds,
-          propagationNeighborCount,
+          PROPAGATION_NEIGHBOR_COUNT,
         );
 
       if (shouldBirth) {
@@ -189,6 +169,16 @@ export class MushroomEssence implements Essence {
 
     return { aliveIndices: nextAlive };
   }
+
+  getWeatherRepercussion(
+    weather: Readonly<WeatherSnapshot>,
+  ): EssencePropertiesDelta {
+    const suffersFromCold =
+      weather.degrees < MUSHROOM_COLD_THRESHOLD_DEGREES &&
+      weather.cycle % MUSHROOM_WEATHER_REPERCUSSION_INTERVAL === 0;
+
+    return { life: suffersFromCold ? -MUSHROOM_COLD_LIFE_LOSS : 0 };
+  }
 }
 
 /** Helper for tests — build input from coordinates. */
@@ -197,7 +187,6 @@ export function makeMushroomInput(
   alive: ReadonlyArray<{ x: number; y: number }>,
   other: ReadonlyArray<{ x: number; y: number }> = [],
   currentCycle = 50,
-  degrees = MUSHROOM_COLD_THRESHOLD_DEGREES,
 ): EssenceEvolutionInput {
   const aliveIndices = new Set(
     alive.map(({ x, y }) => packIndex(x, y, bounds.width)),
@@ -213,11 +202,5 @@ export function makeMushroomInput(
     aliveIndices,
     globalLivingIndices,
     currentCycle,
-    weather: Object.freeze({
-      cycle: currentCycle,
-      season: "Spring",
-      windStrength: 0,
-      degrees,
-    }),
   };
 }

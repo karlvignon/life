@@ -247,6 +247,90 @@ describe("MapModel", () => {
     expect(model.getTile(3, 3)?.getEssence()).toBe(mushroomEssence);
   });
 
+  it("applies weather repercussions independently to every cell", () => {
+    class WeatherSensitiveEssence extends StaticEssence {
+      getWeatherRepercussion(): { life: number } {
+        return { life: -10 };
+      }
+    }
+
+    const weatherSensitiveEssence = new WeatherSensitiveEssence();
+    const model = new MapModel(5, 5);
+    model.setCellAlive(1, 1, weatherSensitiveEssence);
+    model.setCellAlive(2, 2, weatherSensitiveEssence);
+    model.getTile(1, 1)?.apply({ life: -30 });
+
+    model.step(1, weatherForCycle(1));
+
+    expect(model.getTile(1, 1)?.getLife()).toBe(60);
+    expect(model.getTile(2, 2)?.getLife()).toBe(90);
+  });
+
+  it("kills only the cell whose individual life reaches zero", () => {
+    class WeatherSensitiveEssence extends StaticEssence {
+      getWeatherRepercussion(): { life: number } {
+        return { life: -10 };
+      }
+    }
+
+    const sharedEssence = new WeatherSensitiveEssence();
+    const model = new MapModel(5, 5);
+    model.setCellAlive(1, 1, sharedEssence);
+    model.setCellAlive(2, 2, sharedEssence);
+    model.getTile(1, 1)?.apply({ life: -90 });
+
+    model.step(1, weatherForCycle(1));
+
+    expect(model.getTile(1, 1)?.isAlive()).toBe(false);
+    expect(model.getTile(2, 2)?.isAlive()).toBe(true);
+    expect(model.getTile(2, 2)?.getLife()).toBe(90);
+    expect(model.getLivingCount()).toBe(1);
+  });
+
+  it.each([-100, -101])(
+    "kills affected cells when their life reaches zero or less (%i)",
+    (lifeDelta) => {
+      class DyingEssence extends StaticEssence {
+        getWeatherRepercussion(): { life: number } {
+          return { life: lifeDelta };
+        }
+      }
+
+      const dyingEssence = new DyingEssence();
+      const model = new MapModel(5, 5);
+      model.setCellAlive(1, 1, dyingEssence);
+      model.setCellAlive(2, 2, dyingEssence);
+
+      const changes = model.step(1, weatherForCycle(1));
+
+      expect(model.getLivingCount()).toBe(0);
+      expect(model.getTile(1, 1)?.isAlive()).toBe(false);
+      expect(model.getTile(2, 2)?.isAlive()).toBe(false);
+      expect(changes.changes).toEqual(
+        expect.arrayContaining([
+          { x: 1, y: 1, alive: false, essence: null },
+          { x: 2, y: 2, alive: false, essence: null },
+        ]),
+      );
+    },
+  );
+
+  it("loses 10 Mushroom life every 10 cold cycles", () => {
+    const mushroomEssence = new MushroomEssence();
+    const model = new MapModel(5, 5);
+    model.setCellAlive(2, 2, mushroomEssence);
+
+    for (let cycle = 1; cycle <= 10; cycle++) {
+      model.step(cycle, {
+        ...weatherForCycle(cycle),
+        degrees: 24.9,
+      });
+    }
+
+    expect(model.getTile(2, 2)?.getLife()).toBe(90);
+    expect(model.getTile(2, 2)?.isAlive()).toBe(true);
+  });
+
   it("kills Mushroom cells when surrounded by a connected enemy group", () => {
     const mushroomEssence = new MushroomEssence();
     const enemyEssence = new StaticEssence();
@@ -291,6 +375,36 @@ describe("MapModel", () => {
 
     expect(model.getLivingCount()).toBe(1);
     expect(model.getLivingCells()).toHaveLength(1);
+  });
+
+  it("stores independent life for cells sharing the same essence", () => {
+    const sharedEssence = new StaticEssence();
+    const model = new MapModel(5, 5);
+    model.placeCells(
+      [
+        { x: 1, y: 1 },
+        { x: 2, y: 2 },
+      ],
+      sharedEssence,
+    );
+
+    model.getTile(1, 1)?.apply({ life: -40 });
+
+    expect(model.getTile(1, 1)?.getLife()).toBe(60);
+    expect(model.getTile(2, 2)?.getLife()).toBe(100);
+    expect(model.getTile(1, 1)?.getEssence()).toBe(sharedEssence);
+    expect(model.getTile(2, 2)?.getEssence()).toBe(sharedEssence);
+  });
+
+  it("preserves each cell life when resizing the grid", () => {
+    const model = new MapModel(5, 5);
+    model.setCellAlive(1, 1, new StaticEssence());
+    model.getTile(1, 1)?.apply({ life: -40 });
+
+    model.resize(8, 8);
+
+    expect(model.getTile(1, 1)?.getLife()).toBe(60);
+    expect(model.getTile(1, 1)?.getMaximumLife()).toBe(100);
   });
 
   it("rejects invalid cycle values", () => {

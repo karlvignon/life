@@ -26,4 +26,10 @@ describe("CellCreator definitions", () => {
       );
     }
   });
+
+  it("exposes stateless essence definitions with base properties", () => {
+    for (const definition of ESSENCE_DEFINITIONS) {
+      expect(definition.essence.getInitialProperties()).toEqual({ life: 100 });
+    }
+  });
 });

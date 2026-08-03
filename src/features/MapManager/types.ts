@@ -7,6 +7,8 @@ export interface TileSnapshot {
   y: number;
   alive: boolean;
   essence: Essence | null;
+  life: number;
+  maximumLife: number;
 }
 
 export type HorizontalAlign = "start" | "center" | "end";
@@ -32,8 +34,8 @@ export const DEFAULT_TILE_INFO_UI_LAYOUT: TileInfoUiLayoutConfig = {
   horizontalAlign: "end",
   verticalAlign: "start",
   margin: { x: 12, y: 12 },
-  maxWidth: 280,
-  maxHeight: 120,
+  maxWidth: 248,
+  maxHeight: 140,
 };
 
 export interface MapConfig {

@@ -1,16 +1,18 @@
-import type {
+import {
   Essence,
-  EssenceEvolutionInput,
-  EssenceEvolutionResult,
+  type EssenceEvolutionInput,
+  type EssenceEvolutionResult,
 } from "./Essence";
 
 export const DEFAULT_STATIC_COLOR = 0xf97316;
 
 /** Essence immobile — les cellules placées ne changent jamais d'état. */
-export class StaticEssence implements Essence {
+export class StaticEssence extends Essence {
   readonly color: number;
+  readonly name: string = "Static";
 
   constructor(color: number = DEFAULT_STATIC_COLOR) {
+    super();
     this.color = color;
   }
 

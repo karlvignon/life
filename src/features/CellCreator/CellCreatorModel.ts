@@ -65,6 +65,17 @@ export class CellCreatorModel {
     );
   }
 
+  createPlacement(): Placeable | null {
+    if (!this.selectedPattern || !this.previewOrigin) {
+      return null;
+    }
+
+    const pattern = this.selectedPattern.createPattern(
+      this.selectedEssence.essence,
+    );
+    return new Placeable(pattern, this.previewOrigin.x, this.previewOrigin.y);
+  }
+
   private rebuildSelectedPlaceable(): void {
     if (!this.selectedPattern) {
       this.selectedPlaceable = null;

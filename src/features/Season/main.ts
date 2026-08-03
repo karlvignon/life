@@ -62,6 +62,7 @@ export class SeasonManager {
     this.gameEventBus.emit<GameEventMap["game:season-progressed"]>(
       "game:season-progressed",
       {
+        currentCycle: cycle,
         currentSeason: {
           windStrenghRange: currentSeason.windStrenghRange,
           degreeRange: currentSeason.degreeRange,

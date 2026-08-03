@@ -1,5 +1,10 @@
 import type { WeatherSnapshot, WeatherTransition } from "./types";
 
+const WIND_VARIATION_INTERVAL_IN_CYCLES = 23;
+const DEGREE_VARIATION_INTERVAL_IN_CYCLES = 61;
+const WIND_VARIATION_SEED = 0x51f15e;
+const DEGREE_VARIATION_SEED = 0x7e4a11;
+
 export class WeatherModel {
   private currentWindStrength = 0;
   private currentDegrees = 0;
@@ -10,22 +15,32 @@ export class WeatherModel {
   updateFromSeason(transition: WeatherTransition): void {
     validateTransition(transition);
 
-    const currentWindTarget = midpoint(
+    const windRange = interpolateRange(
       transition.currentSeason.windStrenghRange,
+      transition.nextSeason.windStrenghRange,
+      transition.progress,
     );
-    const nextWindTarget = midpoint(transition.nextSeason.windStrenghRange);
-    const currentDegreeTarget = midpoint(transition.currentSeason.degreeRange);
-    const nextDegreeTarget = midpoint(transition.nextSeason.degreeRange);
+    const degreeRange = interpolateRange(
+      transition.currentSeason.degreeRange,
+      transition.nextSeason.degreeRange,
+      transition.progress,
+    );
 
-    this.seasonalWindStrength = lerp(
-      currentWindTarget,
-      nextWindTarget,
-      transition.progress,
+    this.seasonalWindStrength = sampleRange(
+      windRange,
+      smoothVariation(
+        transition.currentCycle,
+        WIND_VARIATION_INTERVAL_IN_CYCLES,
+        WIND_VARIATION_SEED,
+      ),
     );
-    this.seasonalDegrees = lerp(
-      currentDegreeTarget,
-      nextDegreeTarget,
-      transition.progress,
+    this.seasonalDegrees = sampleRange(
+      degreeRange,
+      smoothVariation(
+        transition.currentCycle,
+        DEGREE_VARIATION_INTERVAL_IN_CYCLES,
+        DEGREE_VARIATION_SEED,
+      ),
     );
 
     if (!this.overrideEnabled) {
@@ -67,15 +82,69 @@ export class WeatherModel {
   }
 }
 
-function midpoint(range: readonly [number, number]): number {
-  return (range[0] + range[1]) / 2;
+function interpolateRange(
+  current: readonly [number, number],
+  next: readonly [number, number],
+  progress: number,
+): readonly [number, number] {
+  return [
+    lerp(current[0], next[0], progress),
+    lerp(current[1], next[1], progress),
+  ];
+}
+
+function sampleRange(
+  range: readonly [number, number],
+  normalizedValue: number,
+): number {
+  return lerp(range[0], range[1], normalizedValue);
 }
 
 function lerp(start: number, end: number, progress: number): number {
   return start + (end - start) * progress;
 }
 
+/**
+ * Produit une variation continue entre des cibles pseudo-aleatoires.
+ * Le cycle 0 part du milieu de la plage pour une initialisation previsible.
+ */
+function smoothVariation(
+  cycle: number,
+  interval: number,
+  seed: number,
+): number {
+  const targetIndex = Math.floor(cycle / interval);
+  const progress = (cycle % interval) / interval;
+  const easedProgress = progress * progress * (3 - 2 * progress);
+
+  return lerp(
+    variationTarget(targetIndex, seed),
+    variationTarget(targetIndex + 1, seed),
+    easedProgress,
+  );
+}
+
+function variationTarget(index: number, seed: number): number {
+  if (index === 0) {
+    return 0.5;
+  }
+
+  let value = (index + seed) | 0;
+  value = Math.imul(value ^ (value >>> 16), 0x21f0aaad);
+  value = Math.imul(value ^ (value >>> 15), 0x735a2d97);
+  value ^= value >>> 15;
+
+  return (value >>> 0) / 0xffffffff;
+}
+
 function validateTransition(transition: WeatherTransition): void {
+  if (
+    !Number.isSafeInteger(transition.currentCycle) ||
+    transition.currentCycle < 0
+  ) {
+    throw new RangeError("currentCycle must be a non-negative safe integer");
+  }
+
   validateRange(
     transition.currentSeason.windStrenghRange,
     "currentSeason.windStrenghRange",

@@ -6,6 +6,7 @@ export interface SeasonWeatherSnapshot {
 }
 
 export interface WeatherTransition {
+  currentCycle: number;
   currentSeason: SeasonWeatherSnapshot;
   nextSeason: SeasonWeatherSnapshot;
   progress: number;

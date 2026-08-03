@@ -22,7 +22,10 @@ describe("SeasonManager", () => {
     expect(emitSpy).toHaveBeenCalledTimes(1);
     expect(emitSpy).toHaveBeenCalledWith(
       "game:season-progressed",
-      expect.objectContaining({ progress: expect.any(Number) }),
+      expect.objectContaining({
+        currentCycle: 1,
+        progress: expect.any(Number),
+      }),
     );
 
     manager.update();

@@ -57,7 +57,7 @@ export class Winter extends Season {
   }
 }
 
-export const DEFAULT_SEASON_DURATION_IN_CYCLES = 100;
+export const DEFAULT_SEASON_DURATION_IN_CYCLES = 1000;
 
 export const DEFAULT_SEASONS: ReadonlyArray<Season> = Object.freeze([
   new Spring(),

@@ -16,8 +16,10 @@ export class WeatherModel {
   private seasonalDegrees = 0;
   private overrideEnabled = false;
   private currentCycle = 0;
+  private currentSeason: WeatherSnapshot["season"] = "Spring";
   private snapshot: WeatherSnapshot = Object.freeze({
     cycle: 0,
+    season: "Spring",
     windStrength: 0,
     degrees: 0,
   });
@@ -25,6 +27,7 @@ export class WeatherModel {
   updateFromSeason(transition: WeatherTransition): void {
     validateTransition(transition);
     this.currentCycle = transition.currentCycle;
+    this.currentSeason = transition.currentSeason.name;
 
     const windRange = interpolateRange(
       transition.currentSeason.windStrenghRange,
@@ -96,6 +99,7 @@ export class WeatherModel {
   private refreshSnapshot(): void {
     this.snapshot = Object.freeze({
       cycle: this.currentCycle,
+      season: this.currentSeason,
       windStrength: this.currentWindStrength,
       degrees: this.currentDegrees,
     });

@@ -32,6 +32,7 @@ describe("StaticEssence", () => {
       globalLivingIndices: aliveIndices,
       weather: {
         cycle: 1,
+        season: "Spring" as const,
         windStrength: 12,
         degrees: 20,
       },
@@ -74,6 +75,7 @@ describe("StaticEssence", () => {
     const cycle = gameCycle.advance();
     model.step(cycle, {
       cycle,
+      season: "Spring",
       windStrength: 12,
       degrees: 20,
     });

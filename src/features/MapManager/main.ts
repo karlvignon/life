@@ -39,6 +39,7 @@ export {
 export {
   DEFAULT_MUSHROOM_COLOR,
   MUSHROOM_COLD_THRESHOLD_DEGREES,
+  MUSHROOM_PROPAGATION_INTERVAL,
   MushroomEssence,
 } from "./model/essences/MushroomEssence";
 export {

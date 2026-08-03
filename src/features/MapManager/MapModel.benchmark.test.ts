@@ -20,6 +20,7 @@ describe("MapModel performance baselines", () => {
     const cycle = gameCycle.advance();
     return model.step(cycle, {
       cycle,
+      season: "Spring",
       windStrength: 12,
       degrees: 20,
     });

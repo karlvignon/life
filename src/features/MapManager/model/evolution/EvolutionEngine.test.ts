@@ -25,6 +25,7 @@ describe("EvolutionEngine", () => {
       currentCycle: 1,
       weather: {
         cycle: 1,
+        season: "Spring",
         windStrength: 12,
         degrees: 20,
       },
@@ -58,6 +59,7 @@ describe("EvolutionEngine", () => {
     const secondEssence = makeEssence(0x222222);
     const weather = Object.freeze({
       cycle: 4,
+      season: "Spring" as const,
       windStrength: 28,
       degrees: 6,
     });

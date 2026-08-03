@@ -80,6 +80,7 @@ export function makeGameOfLifeInput(
       overrides.weather ??
       Object.freeze({
         cycle: currentCycle,
+        season: "Spring",
         windStrength: 0,
         degrees: 0,
       }),

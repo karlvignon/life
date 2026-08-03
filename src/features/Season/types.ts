@@ -1,6 +1,8 @@
-export type SeasonRange = readonly [min: number, max: number];
+import type { SeasonName } from "../../core/types/weather";
 
-export type SeasonName = "Spring" | "Summer" | "Autumn" | "Winter";
+export type { SeasonName } from "../../core/types/weather";
+
+export type SeasonRange = readonly [min: number, max: number];
 
 export interface SeasonConfig {
   seasonDurationInCycles?: number;

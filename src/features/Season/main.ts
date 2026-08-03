@@ -56,10 +56,12 @@ export class SeasonManager {
       {
         currentCycle: cycle,
         currentSeason: {
+          name: currentSeason.name,
           windStrenghRange: currentSeason.windStrenghRange,
           degreeRange: currentSeason.degreeRange,
         },
         nextSeason: {
+          name: nextSeason.name,
           windStrenghRange: nextSeason.windStrenghRange,
           degreeRange: nextSeason.degreeRange,
         },

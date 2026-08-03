@@ -12,7 +12,7 @@ import type {
 
 export const DEFAULT_MUSHROOM_COLOR = 0x8b4513;
 export const MUSHROOM_COLD_THRESHOLD_DEGREES = 25;
-const PROPAGATION_INTERVAL = 10;
+export const MUSHROOM_PROPAGATION_INTERVAL = 10;
 const WARM_PROPAGATION_NEIGHBOR_COUNT = 3;
 const COLD_PROPAGATION_NEIGHBOR_COUNT = 4;
 const ENEMY_GROUP_SIZE = 3;
@@ -98,7 +98,7 @@ export class MushroomEssence implements Essence {
     const { bounds, aliveIndices, currentCycle, globalLivingIndices } = input;
     const isCold = input.weather.degrees < MUSHROOM_COLD_THRESHOLD_DEGREES;
 
-    if (currentCycle % PROPAGATION_INTERVAL !== 0) {
+    if (currentCycle % MUSHROOM_PROPAGATION_INTERVAL !== 0) {
       return { aliveIndices: [...aliveIndices] };
     }
 
@@ -215,6 +215,7 @@ export function makeMushroomInput(
     currentCycle,
     weather: Object.freeze({
       cycle: currentCycle,
+      season: "Spring",
       windStrength: 0,
       degrees,
     }),

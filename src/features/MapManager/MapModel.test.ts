@@ -22,6 +22,7 @@ import { SingleCellPattern } from "./model/patterns/SingleCellPattern";
 function weatherForCycle(cycle: number) {
   return Object.freeze({
     cycle,
+    season: "Spring" as const,
     windStrength: 12,
     degrees: 25,
   });

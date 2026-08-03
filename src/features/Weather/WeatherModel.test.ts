@@ -6,10 +6,12 @@ describe("WeatherModel", () => {
   const transition: WeatherTransition = {
     currentCycle: 0,
     currentSeason: {
+      name: "Spring",
       windStrenghRange: [0, 10],
       degreeRange: [10, 20],
     },
     nextSeason: {
+      name: "Summer",
       windStrenghRange: [10, 30],
       degreeRange: [20, 40],
     },
@@ -23,6 +25,20 @@ describe("WeatherModel", () => {
 
     expect(model.getCurrentWindStrength()).toBe(5);
     expect(model.getCurrentDegrees()).toBe(15);
+    expect(model.getSnapshot().season).toBe("Spring");
+  });
+
+  it("tracks the season independently from weather overrides", () => {
+    const model = new WeatherModel();
+    model.updateFromSeason({
+      ...transition,
+      currentCycle: 100,
+      currentSeason: { ...transition.currentSeason, name: "Summer" },
+      nextSeason: { ...transition.nextSeason, name: "Autumn" },
+    });
+    model.setOverride({ windStrength: 42, degrees: -5 });
+
+    expect(model.getSnapshot().season).toBe("Summer");
   });
 
   it("varies wind and degrees smoothly inside the seasonal ranges", () => {

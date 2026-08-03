@@ -12,11 +12,15 @@ export interface WeatherTransition {
   progress: number;
 }
 
-export interface WeatherSnapshot {
-  windStrength: number;
-  degrees: number;
+export interface WeatherValues {
+  readonly windStrength: number;
+  readonly degrees: number;
 }
 
-export interface WeatherOverride extends WeatherSnapshot {
-  enabled: boolean;
+export interface WeatherSnapshot extends WeatherValues {
+  readonly cycle: number;
+}
+
+export interface WeatherOverride extends WeatherValues {
+  readonly enabled: boolean;
 }

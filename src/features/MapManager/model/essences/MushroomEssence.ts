@@ -11,8 +11,11 @@ import type {
 } from "./Essence";
 
 export const DEFAULT_MUSHROOM_COLOR = 0x8b4513;
+export const MUSHROOM_COLD_THRESHOLD_DEGREES = 25;
 const PROPAGATION_INTERVAL = 10;
-const CONNECTED_GROUP_SIZE = 3;
+const WARM_PROPAGATION_NEIGHBOR_COUNT = 3;
+const COLD_PROPAGATION_NEIGHBOR_COUNT = 4;
+const ENEMY_GROUP_SIZE = 3;
 
 function hasConnectedGroupInSet(
   startIndex: CellIndex,
@@ -83,7 +86,7 @@ function collectEnemyNeighbors(
   });
 }
 
-/** Propagation lente — naissance et mort tous les 50 cycles selon voisinage connecté. */
+/** Propagation lente — naissance et mort tous les 10 cycles selon météo et voisinage. */
 export class MushroomEssence implements Essence {
   readonly color: number;
 
@@ -93,6 +96,7 @@ export class MushroomEssence implements Essence {
 
   evolve(input: EssenceEvolutionInput): EssenceEvolutionResult {
     const { bounds, aliveIndices, currentCycle, globalLivingIndices } = input;
+    const isCold = input.weather.degrees < MUSHROOM_COLD_THRESHOLD_DEGREES;
 
     if (currentCycle % PROPAGATION_INTERVAL !== 0) {
       return { aliveIndices: [...aliveIndices] };
@@ -113,10 +117,30 @@ export class MushroomEssence implements Essence {
 
       const enemySet = new Set(enemyNeighborBuffer);
       const diesFromEnemies =
-        enemyNeighborBuffer.length >= CONNECTED_GROUP_SIZE &&
-        hasAnyConnectedGroupOfSize(enemySet, bounds, CONNECTED_GROUP_SIZE);
+        enemyNeighborBuffer.length >= ENEMY_GROUP_SIZE &&
+        hasAnyConnectedGroupOfSize(enemySet, bounds, ENEMY_GROUP_SIZE);
 
-      if (!diesFromEnemies) {
+      mushroomNeighborBuffer.length = 0;
+      forEachMooreNeighborInSet(
+        index,
+        aliveIndices,
+        bounds,
+        (neighborIndex) => {
+          mushroomNeighborBuffer.push(neighborIndex);
+        },
+      );
+
+      const coldNeighborCount = mushroomNeighborBuffer.length;
+      const diesFromColdIsolation =
+        isCold &&
+        (coldNeighborCount === 1 || coldNeighborCount === 2) &&
+        hasAnyConnectedGroupOfSize(
+          new Set(mushroomNeighborBuffer),
+          bounds,
+          coldNeighborCount,
+        );
+
+      if (!diesFromEnemies && !diesFromColdIsolation) {
         nextAlive.push(index);
       }
     }
@@ -134,6 +158,10 @@ export class MushroomEssence implements Essence {
       });
     }
 
+    const propagationNeighborCount = isCold
+      ? COLD_PROPAGATION_NEIGHBOR_COUNT
+      : WARM_PROPAGATION_NEIGHBOR_COUNT;
+
     for (const candidateIndex of candidates) {
       mushroomNeighborBuffer.length = 0;
 
@@ -147,11 +175,11 @@ export class MushroomEssence implements Essence {
       );
 
       const shouldBirth =
-        mushroomNeighborBuffer.length === CONNECTED_GROUP_SIZE &&
+        mushroomNeighborBuffer.length === propagationNeighborCount &&
         hasAnyConnectedGroupOfSize(
           new Set(mushroomNeighborBuffer),
           bounds,
-          CONNECTED_GROUP_SIZE,
+          propagationNeighborCount,
         );
 
       if (shouldBirth) {
@@ -169,6 +197,7 @@ export function makeMushroomInput(
   alive: ReadonlyArray<{ x: number; y: number }>,
   other: ReadonlyArray<{ x: number; y: number }> = [],
   currentCycle = 50,
+  degrees = MUSHROOM_COLD_THRESHOLD_DEGREES,
 ): EssenceEvolutionInput {
   const aliveIndices = new Set(
     alive.map(({ x, y }) => packIndex(x, y, bounds.width)),
@@ -184,5 +213,10 @@ export function makeMushroomInput(
     aliveIndices,
     globalLivingIndices,
     currentCycle,
+    weather: Object.freeze({
+      cycle: currentCycle,
+      windStrength: 0,
+      degrees,
+    }),
   };
 }

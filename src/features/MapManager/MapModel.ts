@@ -1,4 +1,5 @@
 import { packIndex } from "../../core/types/grid";
+import type { WeatherSnapshot } from "../../core/types/weather";
 import type { Essence } from "./model/essences/Essence";
 import {
   emptyChangeSet,
@@ -189,9 +190,15 @@ export class MapModel {
     };
   }
 
-  step(currentCycle: number): CellChangeSet {
+  step(
+    currentCycle: number,
+    weather: Readonly<WeatherSnapshot>,
+  ): CellChangeSet {
     if (!Number.isSafeInteger(currentCycle) || currentCycle < 1) {
       throw new RangeError("currentCycle must be a positive safe integer");
+    }
+    if (weather.cycle !== currentCycle) {
+      throw new RangeError("weather cycle must match currentCycle");
     }
 
     const living = this.registry.snapshot();
@@ -204,6 +211,7 @@ export class MapModel {
       bounds: { width: this._gridWidth, height: this._gridHeight },
       living,
       currentCycle,
+      weather,
       essenceOrder: this.registry.getEssenceOrder(),
     });
 

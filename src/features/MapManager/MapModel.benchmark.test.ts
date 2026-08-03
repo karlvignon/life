@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { gameCycle } from "../../core/GameCycle";
-import { Builder } from "./model/Builder";
 import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 import { MapModel } from "./MapModel";
 import { Placeable } from "./model/Placeable";
@@ -8,15 +7,27 @@ import { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
 
 describe("MapModel performance baselines", () => {
   const essence = new GameOfLifeEssence();
-  const builder = new Builder();
+
+  function place(model: MapModel, placeable: Placeable) {
+    return model.placeCells(placeable.getWorldCells(), placeable.getEssence());
+  }
 
   afterEach(() => {
     gameCycle.reset();
   });
 
+  function advanceStep(model: MapModel) {
+    const cycle = gameCycle.advance();
+    return model.step(cycle, {
+      cycle,
+      windStrength: 12,
+      degrees: 20,
+    });
+  }
+
   it("reports sparse living count on large grids", () => {
     const model = new MapModel(120, 67);
-    builder.build(
+    place(
       model,
       Placeable.centerOnGrid(new BlinkerOscillator(essence), 120, 67),
     );
@@ -27,7 +38,7 @@ describe("MapModel performance baselines", () => {
 
   it("keeps blinker delta bounded across many steps", () => {
     const model = new MapModel(120, 67);
-    builder.build(
+    place(
       model,
       Placeable.centerOnGrid(new BlinkerOscillator(essence), 120, 67),
     );
@@ -35,7 +46,7 @@ describe("MapModel performance baselines", () => {
     let maxDelta = 0;
 
     for (let i = 0; i < 100; i++) {
-      const delta = model.step(gameCycle.advance());
+      const delta = advanceStep(model);
       maxDelta = Math.max(maxDelta, delta.changes.length);
     }
 
@@ -44,7 +55,7 @@ describe("MapModel performance baselines", () => {
 
   it("returns empty delta when stepping an empty grid", () => {
     const model = new MapModel(120, 67);
-    const delta = model.step(gameCycle.advance());
+    const delta = advanceStep(model);
 
     expect(delta.changes).toEqual([]);
   });

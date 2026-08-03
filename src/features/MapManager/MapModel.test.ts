@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { gameCycle } from "../../core/GameCycle";
-import { Builder } from "./model/Builder";
 import {
   DEFAULT_GAME_OF_LIFE_COLOR,
   GameOfLifeEssence,
@@ -20,13 +19,25 @@ import {
 } from "./model/essences/MushroomEssence";
 import { SingleCellPattern } from "./model/patterns/SingleCellPattern";
 
+function weatherForCycle(cycle: number) {
+  return Object.freeze({
+    cycle,
+    windStrength: 12,
+    degrees: 25,
+  });
+}
+
 function advanceStep(model: MapModel) {
-  return model.step(gameCycle.advance());
+  const cycle = gameCycle.advance();
+  return model.step(cycle, weatherForCycle(cycle));
 }
 
 describe("MapModel", () => {
   const essence = new GameOfLifeEssence();
-  const builder = new Builder();
+
+  function place(model: MapModel, placeable: Placeable) {
+    return model.placeCells(placeable.getWorldCells(), placeable.getEssence());
+  }
 
   afterEach(() => {
     gameCycle.reset();
@@ -39,7 +50,7 @@ describe("MapModel", () => {
       5,
       5,
     );
-    builder.build(model, placeable);
+    place(model, placeable);
 
     expect(model.getLivingCells()).toHaveLength(3);
 
@@ -68,10 +79,7 @@ describe("MapModel", () => {
 
   it("returns a small delta for blinker steps", () => {
     const model = new MapModel(5, 5);
-    builder.build(
-      model,
-      Placeable.centerOnGrid(new BlinkerOscillator(essence), 5, 5),
-    );
+    place(model, Placeable.centerOnGrid(new BlinkerOscillator(essence), 5, 5));
 
     const delta = advanceStep(model);
 
@@ -86,7 +94,7 @@ describe("MapModel", () => {
       5,
       5,
     );
-    builder.build(model, placeable);
+    place(model, placeable);
     advanceStep(model);
 
     for (const tile of model.getLivingCells()) {
@@ -101,7 +109,7 @@ describe("MapModel", () => {
       5,
       5,
     );
-    builder.build(model, placeable);
+    place(model, placeable);
 
     model.resize(8, 8);
 
@@ -115,8 +123,8 @@ describe("MapModel", () => {
     const essenceB = new GameOfLifeEssence();
 
     const model = new MapModel(10, 5);
-    builder.place(model, new Placeable(new BlinkerOscillator(essenceA), 1, 1));
-    builder.place(model, new Placeable(new BlinkerOscillator(essenceB), 6, 1));
+    place(model, new Placeable(new BlinkerOscillator(essenceA), 1, 1));
+    place(model, new Placeable(new BlinkerOscillator(essenceB), 6, 1));
 
     expect(model.getLivingCells()).toHaveLength(6);
 
@@ -137,7 +145,7 @@ describe("MapModel", () => {
     const essenceA = new GameOfLifeEssence();
 
     const model = new MapModel(5, 5);
-    builder.place(model, new Placeable(new BlinkerOscillator(essenceA), 1, 1));
+    place(model, new Placeable(new BlinkerOscillator(essenceA), 1, 1));
 
     advanceStep(model);
 
@@ -184,7 +192,7 @@ describe("MapModel", () => {
       10,
     );
 
-    builder.build(model, placeable);
+    place(model, placeable);
 
     for (const tile of model.getLivingCells()) {
       expect(tile.getEssence()).toBe(highLifeEssence);
@@ -205,9 +213,11 @@ describe("MapModel", () => {
     const model = new MapModel(5, 5);
 
     expect(gameCycle.getCurrentCycle()).toBe(0);
-    model.step(gameCycle.advance());
+    let cycle = gameCycle.advance();
+    model.step(cycle, weatherForCycle(cycle));
     expect(gameCycle.getCurrentCycle()).toBe(1);
-    model.step(gameCycle.advance());
+    cycle = gameCycle.advance();
+    model.step(cycle, weatherForCycle(cycle));
     expect(gameCycle.getCurrentCycle()).toBe(2);
   });
 
@@ -266,7 +276,7 @@ describe("MapModel", () => {
       5,
     );
 
-    builder.build(model, placeable);
+    place(model, placeable);
 
     for (const tile of model.getLivingCells()) {
       expect(tile.getEssence()).toBe(mushroomEssence);
@@ -284,7 +294,13 @@ describe("MapModel", () => {
 
   it("rejects invalid cycle values", () => {
     const model = new MapModel(5, 5);
-    expect(() => model.step(0)).toThrow(RangeError);
-    expect(() => model.step(-1)).toThrow(RangeError);
+    expect(() => model.step(0, weatherForCycle(0))).toThrow(RangeError);
+    expect(() => model.step(-1, weatherForCycle(-1))).toThrow(RangeError);
+  });
+
+  it("rejects weather from a different cycle", () => {
+    const model = new MapModel(5, 5);
+
+    expect(() => model.step(2, weatherForCycle(1))).toThrow(RangeError);
   });
 });

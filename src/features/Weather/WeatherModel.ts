@@ -1,4 +1,8 @@
-import type { WeatherSnapshot, WeatherTransition } from "./types";
+import type {
+  WeatherSnapshot,
+  WeatherTransition,
+  WeatherValues,
+} from "./types";
 
 const WIND_VARIATION_INTERVAL_IN_CYCLES = 23;
 const DEGREE_VARIATION_INTERVAL_IN_CYCLES = 61;
@@ -11,9 +15,16 @@ export class WeatherModel {
   private seasonalWindStrength = 0;
   private seasonalDegrees = 0;
   private overrideEnabled = false;
+  private currentCycle = 0;
+  private snapshot: WeatherSnapshot = Object.freeze({
+    cycle: 0,
+    windStrength: 0,
+    degrees: 0,
+  });
 
   updateFromSeason(transition: WeatherTransition): void {
     validateTransition(transition);
+    this.currentCycle = transition.currentCycle;
 
     const windRange = interpolateRange(
       transition.currentSeason.windStrenghRange,
@@ -47,19 +58,23 @@ export class WeatherModel {
       this.currentWindStrength = this.seasonalWindStrength;
       this.currentDegrees = this.seasonalDegrees;
     }
+
+    this.refreshSnapshot();
   }
 
-  setOverride(snapshot: WeatherSnapshot): void {
+  setOverride(snapshot: WeatherValues): void {
     validateSnapshot(snapshot);
     this.overrideEnabled = true;
     this.currentWindStrength = snapshot.windStrength;
     this.currentDegrees = snapshot.degrees;
+    this.refreshSnapshot();
   }
 
   clearOverride(): void {
     this.overrideEnabled = false;
     this.currentWindStrength = this.seasonalWindStrength;
     this.currentDegrees = this.seasonalDegrees;
+    this.refreshSnapshot();
   }
 
   isOverrideEnabled(): boolean {
@@ -75,10 +90,15 @@ export class WeatherModel {
   }
 
   getSnapshot(): WeatherSnapshot {
-    return {
+    return this.snapshot;
+  }
+
+  private refreshSnapshot(): void {
+    this.snapshot = Object.freeze({
+      cycle: this.currentCycle,
       windStrength: this.currentWindStrength,
       degrees: this.currentDegrees,
-    };
+    });
   }
 }
 
@@ -178,7 +198,7 @@ function validateRange(range: readonly [number, number], label: string): void {
   }
 }
 
-function validateSnapshot(snapshot: WeatherSnapshot): void {
+function validateSnapshot(snapshot: WeatherValues): void {
   if (
     !Number.isFinite(snapshot.windStrength) ||
     !Number.isFinite(snapshot.degrees)

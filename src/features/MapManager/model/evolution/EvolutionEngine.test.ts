@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { packIndex } from "../../../../core/types/grid";
 import { GameOfLifeEssence } from "../essences/GameOfLifeEssence";
+import type {
+  Essence,
+  EssenceEvolutionInput,
+  EssenceEvolutionResult,
+} from "../essences/Essence";
 import { computeNextGeneration } from "./EvolutionEngine";
 
 describe("EvolutionEngine", () => {
@@ -18,6 +23,11 @@ describe("EvolutionEngine", () => {
       bounds,
       living,
       currentCycle: 1,
+      weather: {
+        cycle: 1,
+        windStrength: 12,
+        degrees: 20,
+      },
       essenceOrder: [essence],
     });
 
@@ -33,5 +43,38 @@ describe("EvolutionEngine", () => {
       { x: 2, y: 2 },
       { x: 2, y: 3 },
     ]);
+  });
+
+  it("shares the exact weather snapshot with every essence group", () => {
+    const receivedWeather: EssenceEvolutionInput["weather"][] = [];
+    const makeEssence = (color: number): Essence => ({
+      color,
+      evolve(input: EssenceEvolutionInput): EssenceEvolutionResult {
+        receivedWeather.push(input.weather);
+        return { aliveIndices: [...input.aliveIndices] };
+      },
+    });
+    const firstEssence = makeEssence(0x111111);
+    const secondEssence = makeEssence(0x222222);
+    const weather = Object.freeze({
+      cycle: 4,
+      windStrength: 28,
+      degrees: 6,
+    });
+
+    computeNextGeneration({
+      bounds,
+      living: [
+        { index: packIndex(1, 1, bounds.width), essence: firstEssence },
+        { index: packIndex(3, 3, bounds.width), essence: secondEssence },
+      ],
+      currentCycle: 4,
+      weather,
+      essenceOrder: [firstEssence, secondEssence],
+    });
+
+    expect(receivedWeather).toHaveLength(2);
+    expect(receivedWeather[0]).toBe(weather);
+    expect(receivedWeather[1]).toBe(weather);
   });
 });

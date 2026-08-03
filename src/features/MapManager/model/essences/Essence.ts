@@ -1,4 +1,5 @@
 import type { CellIndex, GridBounds } from "../../../../core/types/grid";
+import type { WeatherSnapshot } from "../../../../core/types/weather";
 
 export interface EssenceEvolutionInput {
   bounds: GridBounds;
@@ -6,6 +7,8 @@ export interface EssenceEvolutionInput {
   aliveIndices: ReadonlySet<CellIndex>;
   /** Numéro du cycle courant (1-based, incrémenté à chaque step). */
   currentCycle: number;
+  /** Snapshot global immuable, synchronisé avec currentCycle. */
+  weather: Readonly<WeatherSnapshot>;
   /** All living cell indices on the grid (all essences). */
   globalLivingIndices: ReadonlySet<CellIndex>;
 }

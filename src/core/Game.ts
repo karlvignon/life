@@ -31,7 +31,7 @@ export class Game {
     this.app = app;
     gameCycle.reset();
 
-    this.mapManager = new MapManager(app, config.map, this.eventBus);
+    this.mapManager = new MapManager(app, config.map);
     this.mapManager.setChunkRenderDebugEnabled(
       config.devOptions?.display.displayChunkRender ?? false,
     );
@@ -87,8 +87,17 @@ export class Game {
 
   private update(dtMs: number): void {
     this.mapManager.update(dtMs);
-    this.seasonManager.update();
-    this.weatherManager.update();
+
+    const dueCycles = gameCycle.consumeDueCycles(
+      dtMs,
+      this.gameOptionsManager.getSpeed(),
+    );
+
+    for (const cycle of dueCycles) {
+      this.seasonManager.syncToCycle(cycle);
+      this.mapManager.step(cycle, this.weatherManager.getSnapshot());
+    }
+
     this.devUIManager?.update();
   }
 

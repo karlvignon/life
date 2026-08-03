@@ -17,11 +17,6 @@ export class Placeable {
     return this.pattern.getEssence();
   }
 
-  /** @deprecated Préférer getPattern() */
-  getSpaceship(): Pattern {
-    return this.pattern;
-  }
-
   getOrigin(): CellOffset {
     return { x: this.x, y: this.y };
   }

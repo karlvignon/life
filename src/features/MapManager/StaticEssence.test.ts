@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { gameCycle } from "../../core/GameCycle";
 import { packIndex } from "../../core/types/grid";
-import { Builder } from "./model/Builder";
 import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 import {
   DEFAULT_STATIC_COLOR,
@@ -31,6 +30,11 @@ describe("StaticEssence", () => {
       aliveIndices,
       currentCycle: 1,
       globalLivingIndices: aliveIndices,
+      weather: {
+        cycle: 1,
+        windStrength: 12,
+        degrees: 20,
+      },
     };
 
     const first = essence.evolve(input);
@@ -46,19 +50,33 @@ describe("StaticEssence", () => {
   it("does not evolve a placed static cell while Conway cells change nearby", () => {
     const staticEssence = new StaticEssence();
     const conwayEssence = new GameOfLifeEssence();
-    const builder = new Builder();
     const model = new MapModel(10, 10);
 
-    builder.place(
-      model,
-      new Placeable(new SingleCellPattern(staticEssence), 1, 1),
+    const staticPlaceable = new Placeable(
+      new SingleCellPattern(staticEssence),
+      1,
+      1,
     );
-    builder.place(
-      model,
-      new Placeable(new BlinkerOscillator(conwayEssence), 5, 1),
+    model.placeCells(
+      staticPlaceable.getWorldCells(),
+      staticPlaceable.getEssence(),
+    );
+    const conwayPlaceable = new Placeable(
+      new BlinkerOscillator(conwayEssence),
+      5,
+      1,
+    );
+    model.placeCells(
+      conwayPlaceable.getWorldCells(),
+      conwayPlaceable.getEssence(),
     );
 
-    model.step(gameCycle.advance());
+    const cycle = gameCycle.advance();
+    model.step(cycle, {
+      cycle,
+      windStrength: 12,
+      degrees: 20,
+    });
 
     expect(model.getTile(1, 1)?.isAlive()).toBe(true);
     expect(model.getTile(1, 1)?.getEssence()).toBe(staticEssence);

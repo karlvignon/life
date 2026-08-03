@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_MUSHROOM_COLOR,
   makeMushroomInput,
+  MUSHROOM_COLD_THRESHOLD_DEGREES,
   MushroomEssence,
 } from "./model/essences/MushroomEssence";
 import { unpackAliveCells } from "./model/essences/GameOfLifeEssence";
@@ -27,6 +28,98 @@ describe("MushroomEssence", () => {
     expect(unpackAliveCells(result.aliveIndices, bounds.width)).toEqual([
       { x: 3, y: 3 },
     ]);
+  });
+
+  it.each([
+    ["one", [{ x: 2, y: 2 }]],
+    [
+      "two",
+      [
+        { x: 2, y: 2 },
+        { x: 3, y: 2 },
+      ],
+    ],
+  ])(
+    "kills a cold mushroom with only %s connected mushroom neighbor(s)",
+    (_label, neighbors) => {
+      const result = essence.evolve(
+        makeMushroomInput(
+          bounds,
+          [{ x: 3, y: 3 }, ...neighbors],
+          [],
+          50,
+          MUSHROOM_COLD_THRESHOLD_DEGREES - 0.1,
+        ),
+      );
+
+      expect(
+        unpackAliveCells(result.aliveIndices, bounds.width),
+      ).not.toContainEqual({ x: 3, y: 3 });
+    },
+  );
+
+  it("keeps cold mushrooms with three connected mushroom neighbors", () => {
+    const result = essence.evolve(
+      makeMushroomInput(
+        bounds,
+        [
+          { x: 3, y: 3 },
+          { x: 2, y: 2 },
+          { x: 3, y: 2 },
+          { x: 2, y: 3 },
+        ],
+        [],
+        50,
+        MUSHROOM_COLD_THRESHOLD_DEGREES - 0.1,
+      ),
+    );
+
+    expect(unpackAliveCells(result.aliveIndices, bounds.width)).toContainEqual({
+      x: 3,
+      y: 3,
+    });
+  });
+
+  it("does not birth a cold mushroom with only 3 connected neighbors", () => {
+    const result = essence.evolve(
+      makeMushroomInput(
+        bounds,
+        [
+          { x: 2, y: 2 },
+          { x: 3, y: 2 },
+          { x: 2, y: 3 },
+        ],
+        [],
+        50,
+        MUSHROOM_COLD_THRESHOLD_DEGREES - 0.1,
+      ),
+    );
+
+    expect(
+      unpackAliveCells(result.aliveIndices, bounds.width),
+    ).not.toContainEqual({ x: 3, y: 3 });
+  });
+
+  it("births a cold mushroom with exactly 4 connected neighbors", () => {
+    const result = essence.evolve(
+      makeMushroomInput(
+        bounds,
+        [
+          { x: 2, y: 2 },
+          { x: 3, y: 2 },
+          { x: 2, y: 3 },
+          { x: 4, y: 3 },
+        ],
+        [],
+        50,
+        MUSHROOM_COLD_THRESHOLD_DEGREES - 0.1,
+      ),
+    );
+
+    expect(unpackAliveCells(result.aliveIndices, bounds.width)).toContainEqual({
+      x: 3,
+      y: 3,
+    });
   });
 
   it("births an empty cell with exactly 3 connected mushroom neighbors", () => {

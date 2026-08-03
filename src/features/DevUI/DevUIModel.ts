@@ -1,4 +1,4 @@
-import type { WeatherSnapshot } from "../../core/types/weather";
+import type { WeatherValues } from "../../core/types/weather";
 import {
   MAX_OVERRIDE_DEGREES,
   MAX_OVERRIDE_WIND_STRENGTH,
@@ -49,7 +49,7 @@ export class DevUIModel {
     return this.renderTimeTotalMs / this.renderTimesMs.length;
   }
 
-  syncWeather(snapshot: WeatherSnapshot): void {
+  syncWeather(snapshot: WeatherValues): void {
     if (this.weatherOverrideEnabled) {
       return;
     }

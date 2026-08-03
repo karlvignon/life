@@ -1,5 +1,4 @@
 import type { EventBus } from "../../core/EventBus";
-import { gameCycle } from "../../core/GameCycle";
 import type { GameEventMap } from "../../core/types/gameEvents";
 import { SeasonModel } from "./SeasonModel";
 import {
@@ -32,11 +31,10 @@ export class SeasonManager {
       config.seasonDurationInCycles ?? DEFAULT_SEASON_DURATION_IN_CYCLES,
     );
 
-    this.syncFromCurrentCycle();
+    this.syncToCycle(0);
   }
 
-  update(): void {
-    const cycle = gameCycle.getCurrentCycle();
+  syncToCycle(cycle: number): void {
     if (cycle === this.lastProcessedCycle) {
       return;
     }
@@ -48,12 +46,6 @@ export class SeasonManager {
   render(): void {}
 
   destroy(): void {}
-
-  private syncFromCurrentCycle(): void {
-    const cycle = gameCycle.getCurrentCycle();
-    this.lastProcessedCycle = cycle;
-    this.emitSeasonProgressed(cycle);
-  }
 
   private emitSeasonProgressed(cycle: number): void {
     const currentSeason = this.model.getCurrentSeason(cycle);

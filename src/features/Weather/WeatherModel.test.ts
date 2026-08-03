@@ -66,10 +66,13 @@ describe("WeatherModel", () => {
 
     model.updateFromSeason({ ...transition, currentCycle: 100, progress: 1 });
 
-    expect(model.getSnapshot()).toEqual({
-      windStrength: 42,
-      degrees: -5,
-    });
+    expect(model.getSnapshot()).toEqual(
+      expect.objectContaining({
+        windStrength: 42,
+        degrees: -5,
+      }),
+    );
+    expect(model.getSnapshot().cycle).toBe(100);
     expect(model.isOverrideEnabled()).toBe(true);
   });
 
@@ -109,5 +112,17 @@ describe("WeatherModel", () => {
     expect(() =>
       model.setOverride({ windStrength: Number.NaN, degrees: 20 }),
     ).toThrow(RangeError);
+  });
+
+  it("returns one immutable snapshot for the current weather state", () => {
+    const model = new WeatherModel();
+    model.updateFromSeason({ ...transition, currentCycle: 7 });
+
+    const first = model.getSnapshot();
+    const second = model.getSnapshot();
+
+    expect(first).toBe(second);
+    expect(first.cycle).toBe(7);
+    expect(Object.isFrozen(first)).toBe(true);
   });
 });

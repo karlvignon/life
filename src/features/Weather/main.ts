@@ -3,7 +3,7 @@ import type { EventBus } from "../../core/EventBus";
 import type { GameEventMap } from "../../core/types/gameEvents";
 import { WeatherModel } from "./WeatherModel";
 import { WeatherView } from "./WeatherView";
-import type { WeatherConfig } from "./types";
+import type { WeatherConfig, WeatherSnapshot } from "./types";
 
 export type {
   SeasonWeatherSnapshot,
@@ -12,6 +12,7 @@ export type {
   WeatherSnapshot,
   WeatherTransition,
   WeatherUiLayoutConfig,
+  WeatherValues,
 } from "./types";
 export { DEFAULT_WEATHER_UI_LAYOUT } from "./types";
 
@@ -71,7 +72,9 @@ export class WeatherManager {
     return this.model.getCurrentDegrees();
   }
 
-  update(): void {}
+  getSnapshot(): Readonly<WeatherSnapshot> {
+    return this.model.getSnapshot();
+  }
 
   render(): void {
     if (!this.renderDirty) {

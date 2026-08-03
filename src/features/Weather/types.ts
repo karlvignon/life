@@ -3,6 +3,7 @@ export type {
   WeatherRange,
   WeatherSnapshot,
   WeatherTransition,
+  WeatherValues,
 } from "../../core/types/weather";
 
 export interface WeatherUiLayoutConfig {

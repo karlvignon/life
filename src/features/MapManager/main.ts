@@ -4,65 +4,60 @@ import {
   FederatedPointerEvent,
   Rectangle,
 } from "pixi.js";
-import type { EventBus } from "../../core/EventBus";
-import { gameCycle } from "../../core/GameCycle";
-import type { GameEventMap } from "../../core/types/gameEvents";
-import { mergeChangeSets } from "./model/CellChangeSet";
-import type { CellChangeSet } from "./model/CellChangeSet";
+import type { WeatherSnapshot } from "../../core/types/weather";
+import { ChunkRenderDebugModel } from "./ChunkRenderDebugModel";
+import { ChunkRenderDebugView } from "./ChunkRenderDebugView";
 import { MapEventManager } from "./MapEventManager";
 import { MapModel } from "./MapModel";
 import { MapView } from "./MapView";
 import { TileInfoView } from "./TileInfoView";
-import { Builder } from "./model/Builder";
+import type { CellChangeSet } from "./model/CellChangeSet";
 import { Placeable } from "./model/Placeable";
+import { Tile } from "./model/Tile";
 import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 import { GenesisSpaceship } from "./model/spaceships/GenesisSpaceship";
 import { Spaceship } from "./model/spaceships/Spaceship";
-import { Tile } from "./model/Tile";
 import {
   mergeRenderDeltas,
   type MapRenderDelta,
   type MapRenderUpdate,
 } from "./render/types";
 import { computeGridSize, DEFAULT_CELL_SIZE, type MapConfig } from "./types";
-import { ChunkRenderDebugModel } from "./ChunkRenderDebugModel";
-import { ChunkRenderDebugView } from "./ChunkRenderDebugView";
 
-const DEFAULT_MAX_STEPS_PER_FRAME = 10;
-
-export type { MapConfig, TileSnapshot, TileInfoUiLayoutConfig } from "./types";
 export type { CellOffset } from "../../core/types/grid";
-export { DEFAULT_TILE_INFO_UI_LAYOUT } from "./types";
-export { Tile } from "./model/Tile";
 export { Placeable } from "./model/Placeable";
+export { Tile } from "./model/Tile";
 export type { Essence } from "./model/essences/Essence";
 export {
-  GameOfLifeEssence,
   DEFAULT_GAME_OF_LIFE_COLOR,
+  GameOfLifeEssence,
 } from "./model/essences/GameOfLifeEssence";
 export {
-  HighLifeEssence,
   DEFAULT_HIGHLIFE_COLOR,
+  HighLifeEssence,
 } from "./model/essences/HighLifeEssence";
 export {
-  StaticEssence,
-  DEFAULT_STATIC_COLOR,
-} from "./model/essences/StaticEssence";
-export {
-  MushroomEssence,
   DEFAULT_MUSHROOM_COLOR,
+  MUSHROOM_COLD_THRESHOLD_DEGREES,
+  MushroomEssence,
 } from "./model/essences/MushroomEssence";
-export { Pattern } from "./model/patterns/Pattern";
-export { RlePattern } from "./model/patterns/RlePattern";
+export {
+  DEFAULT_STATIC_COLOR,
+  StaticEssence,
+} from "./model/essences/StaticEssence";
 export { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
 export { HighLifeReplicator } from "./model/patterns/HighLifeReplicator";
-export { ToadOscillator } from "./model/patterns/ToadOscillator";
+export { Pattern } from "./model/patterns/Pattern";
+export { RlePattern } from "./model/patterns/RlePattern";
 export { SingleCellPattern } from "./model/patterns/SingleCellPattern";
-export { Spaceship } from "./model/spaceships/Spaceship";
+export { ToadOscillator } from "./model/patterns/ToadOscillator";
 export { GenesisSpaceship } from "./model/spaceships/GenesisSpaceship";
 export { GliderSpaceship } from "./model/spaceships/GliderSpaceship";
 export { LightweightSpaceship } from "./model/spaceships/LightweightSpaceship";
 export { MiddleweightSpaceship } from "./model/spaceships/MiddleweightSpaceship";
+export { Spaceship } from "./model/spaceships/Spaceship";
+export { DEFAULT_TILE_INFO_UI_LAYOUT } from "./types";
+export type { MapConfig, TileInfoUiLayoutConfig, TileSnapshot } from "./types";
 
 export class MapManager {
   private readonly app: Application;
@@ -70,8 +65,6 @@ export class MapManager {
   private readonly uiRoot: Container;
   private readonly cellSize: number;
   private readonly initialSpaceship: Spaceship;
-  private readonly maxStepsPerFrame: number;
-  private readonly builder = new Builder();
   private readonly eventManager = new MapEventManager();
   private readonly chunkRenderDebugModel = new ChunkRenderDebugModel();
   private readonly chunkRenderDebugView: ChunkRenderDebugView;
@@ -79,10 +72,7 @@ export class MapManager {
   private model: MapModel | null = null;
   private mapView: MapView | null = null;
   private readonly tileInfoUi: TileInfoView;
-  private readonly gameEventBus: EventBus | null;
   private seeded = false;
-  private stepsPerSecond = 0;
-  private evolutionAccumulatorMs = 0;
 
   private renderDirty = false;
   private pendingUpdate: MapRenderUpdate | null = null;
@@ -95,18 +85,11 @@ export class MapManager {
     this.layout();
   };
 
-  constructor(
-    app: Application,
-    config: MapConfig = {},
-    gameEventBus: EventBus | null = null,
-    maxStepsPerFrame = DEFAULT_MAX_STEPS_PER_FRAME,
-  ) {
+  constructor(app: Application, config: MapConfig = {}) {
     this.app = app;
     this.stage = app.stage;
-    this.gameEventBus = gameEventBus;
     this.cellSize = config.cellSize ?? DEFAULT_CELL_SIZE;
     this.chunkRenderDebugView = new ChunkRenderDebugView(this.cellSize);
-    this.maxStepsPerFrame = maxStepsPerFrame;
     const defaultEssence = config.defaultEssence ?? new GameOfLifeEssence();
     this.initialSpaceship =
       config.initialSpaceship ?? new GenesisSpaceship(defaultEssence);
@@ -134,35 +117,14 @@ export class MapManager {
     ) {
       this.chunkRenderDebugDirty = true;
     }
+  }
 
-    if (!this.model || this.stepsPerSecond <= 0) {
+  step(currentCycle: number, weather: Readonly<WeatherSnapshot>): void {
+    if (!this.model) {
       return;
     }
 
-    const stepIntervalMs = 1000 / this.stepsPerSecond;
-    this.evolutionAccumulatorMs += dtMs;
-
-    let stepsThisFrame = 0;
-    let frameChanges: CellChangeSet | null = null;
-
-    while (
-      this.evolutionAccumulatorMs >= stepIntervalMs &&
-      stepsThisFrame < this.maxStepsPerFrame
-    ) {
-      const currentCycle = gameCycle.advance();
-      const stepDelta = this.model.step(currentCycle);
-      frameChanges = mergeChangeSets(frameChanges, stepDelta);
-      this.evolutionAccumulatorMs -= stepIntervalMs;
-      stepsThisFrame++;
-    }
-
-    if (this.evolutionAccumulatorMs >= stepIntervalMs) {
-      this.evolutionAccumulatorMs = stepIntervalMs;
-    }
-
-    if (frameChanges && frameChanges.changes.length > 0) {
-      this.queueDelta(frameChanges);
-    }
+    this.queueDelta(this.model.step(currentCycle, weather));
   }
 
   render(): void {
@@ -257,7 +219,10 @@ export class MapManager {
       return;
     }
 
-    const changes = this.builder.place(this.model, placeable);
+    const changes = this.model.placeCells(
+      placeable.getWorldCells(),
+      placeable.getEssence(),
+    );
     this.queueDelta(changes);
   }
 
@@ -298,13 +263,6 @@ export class MapManager {
     this.eventManager.on("tile:leave", () => {
       this.tileInfoUi.setTile(null);
     });
-
-    this.gameEventBus?.on<GameEventMap["game:speed-changed"]>(
-      "game:speed-changed",
-      ({ speed }) => {
-        this.stepsPerSecond = speed;
-      },
-    );
   }
 
   private bindMapPointerEvents(): void {
@@ -414,7 +372,10 @@ export class MapManager {
       this.model.gridWidth,
       this.model.gridHeight,
     );
-    const changes = this.builder.build(this.model, placeable);
+    const changes = this.model.placeCells(
+      placeable.getWorldCells(),
+      placeable.getEssence(),
+    );
     this.queueDelta(changes);
 
     this.seeded = true;

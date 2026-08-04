@@ -16,6 +16,7 @@ import { HighLifeReplicator } from "./model/patterns/HighLifeReplicator";
 import {
   MushroomEssence,
   DEFAULT_MUSHROOM_COLOR,
+  MUSHROOM_BIRTH_PATTERN,
 } from "./model/essences/MushroomEssence";
 import { SingleCellPattern } from "./model/patterns/SingleCellPattern";
 
@@ -229,29 +230,27 @@ describe("MapModel", () => {
     expect(gameCycle.getCurrentCycle()).toBe(2);
   });
 
-  it("propagates Mushroom cells on propagation cycles with connected neighbors", () => {
+  it("births a Mushroom cell only from its complete pattern", () => {
     const mushroomEssence = new MushroomEssence();
-    const model = new MapModel(7, 7);
+    const model = new MapModel(9, 9);
+    const center = { x: 4, y: 4 };
 
-    for (const { x, y } of [
-      { x: 2, y: 2 },
-      { x: 3, y: 2 },
-      { x: 2, y: 3 },
-    ]) {
-      model.setCellAlive(x, y, mushroomEssence);
+    for (const offset of MUSHROOM_BIRTH_PATTERN) {
+      model.setCellAlive(
+        center.x + offset.x,
+        center.y + offset.y,
+        mushroomEssence,
+      );
     }
 
-    for (let i = 0; i < 9; i++) {
-      advanceStep(model);
-    }
-
-    expect(model.getTile(3, 3)?.isAlive()).toBe(false);
+    expect(model.getTile(center.x, center.y)?.isAlive()).toBe(false);
 
     advanceStep(model);
 
-    expect(gameCycle.getCurrentCycle()).toBe(10);
-    expect(model.getTile(3, 3)?.isAlive()).toBe(true);
-    expect(model.getTile(3, 3)?.getEssence()).toBe(mushroomEssence);
+    expect(model.getTile(center.x, center.y)?.isAlive()).toBe(true);
+    expect(model.getTile(center.x, center.y)?.getEssence()).toBe(
+      mushroomEssence,
+    );
   });
 
   it("applies weather repercussions independently to every cell", () => {
@@ -338,7 +337,7 @@ describe("MapModel", () => {
     expect(model.getTile(2, 2)?.isAlive()).toBe(true);
   });
 
-  it("kills Mushroom cells when surrounded by a connected enemy group", () => {
+  it("keeps Mushroom cells alive near enemy groups", () => {
     const mushroomEssence = new MushroomEssence();
     const enemyEssence = new StaticEssence();
     const model = new MapModel(7, 7);
@@ -356,7 +355,7 @@ describe("MapModel", () => {
       advanceStep(model);
     }
 
-    expect(model.getTile(3, 3)?.isAlive()).toBe(false);
+    expect(model.getTile(3, 3)?.isAlive()).toBe(true);
   });
 
   it("assigns Mushroom essence and color to placed single cells", () => {

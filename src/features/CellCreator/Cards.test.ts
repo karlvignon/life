@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { StaticEssence, TreeEssence } from "../MapManager/main";
+import { FloraEssence, StaticEssence, TreeEssence } from "../MapManager/main";
 import {
   DEFAULT_ESSENCE_DEFINITION,
   ESSENCE_DEFINITIONS,
@@ -24,6 +24,7 @@ describe("CellCreator cards", () => {
       "high-life",
       "static",
       "mushroom",
+      "flora",
       "tree",
     ]);
     expect(DEFAULT_ESSENCE_DEFINITION.id).toBe("game-of-life");
@@ -34,6 +35,28 @@ describe("CellCreator cards", () => {
 
     expect(definition?.label).toBe("Tree");
     expect(definition?.essence).toBeInstanceOf(TreeEssence);
+  });
+
+  it("offers Flora with cell and birth-pattern cards", () => {
+    const definition = ESSENCE_DEFINITIONS.find(({ id }) => id === "flora");
+    const cards = getCardsForEssence("flora");
+
+    expect(definition?.label).toBe("Flora");
+    expect(definition?.essence).toBeInstanceOf(FloraEssence);
+    expect(cards.map(({ id }) => id)).toEqual([
+      "flora:cell",
+      "flora:flora-birth",
+    ]);
+    expect(cards[1]?.pattern.getCells()).toEqual([
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 2, y: 0 },
+      { x: 0, y: 1 },
+      { x: 2, y: 1 },
+      { x: 0, y: 2 },
+      { x: 1, y: 2 },
+      { x: 2, y: 2 },
+    ]);
   });
 
   it("duplicates all existing patterns for Conway and HighLife", () => {
@@ -53,26 +76,34 @@ describe("CellCreator cards", () => {
     expect(cards[0]?.pattern.getCells()).toEqual([{ x: 0, y: 0 }]);
   });
 
-  it("gives Mushroom a cell and a horizontal three-cell line", () => {
+  it("gives Mushroom its existing cards and its birth pattern", () => {
     const cards = getCardsForEssence("mushroom");
 
     expect(cards.map(({ id }) => id)).toEqual([
       "mushroom:cell",
       "mushroom:horizontal-line",
+      "mushroom:mushroom-birth",
     ]);
     expect(cards[1]?.pattern.getCells()).toEqual([
       { x: 0, y: 0 },
       { x: 1, y: 0 },
       { x: 2, y: 0 },
     ]);
+    expect(cards[2]?.pattern.getCells()).toEqual([
+      { x: 1, y: 0 },
+      { x: 0, y: 1 },
+      { x: 2, y: 1 },
+      { x: 1, y: 2 },
+    ]);
   });
 
-  it("gives Tree a cell and a five-cell cross", () => {
+  it("gives Tree its existing cards and its birth pattern", () => {
     const cards = getCardsForEssence("tree");
 
     expect(cards.map(({ id }) => id)).toEqual([
       "tree:cell",
       "tree:five-cell-cross",
+      "tree:tree-birth",
     ]);
     expect(cards[1]?.pattern.getCells()).toEqual([
       { x: 1, y: 0 },
@@ -80,6 +111,12 @@ describe("CellCreator cards", () => {
       { x: 1, y: 1 },
       { x: 2, y: 1 },
       { x: 1, y: 2 },
+    ]);
+    expect(cards[2]?.pattern.getCells()).toEqual([
+      { x: 0, y: 0 },
+      { x: 2, y: 0 },
+      { x: 0, y: 2 },
+      { x: 2, y: 2 },
     ]);
   });
 

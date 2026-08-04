@@ -12,6 +12,7 @@ export const ESSENCE_DEFINITIONS: ReadonlyArray<EssenceCatalogEntry> = [
   { id: "high-life", label: "HighLife" },
   { id: "static", label: "Static" },
   { id: "mushroom", label: "Mushroom" },
+  { id: "flora", label: "Flora" },
   { id: "tree", label: "Tree" },
 ];
 
@@ -101,12 +102,31 @@ export const CARD_DEFINITIONS: ReadonlyArray<CardDefinition> = [
     label: "Horizontal line",
     staminaCost: 30,
   },
+  {
+    essenceId: "mushroom",
+    patternId: "mushroom-birth",
+    label: "Birth pattern",
+    staminaCost: 40,
+  },
+  { essenceId: "flora", patternId: "cell", label: "Cell", staminaCost: 1 },
+  {
+    essenceId: "flora",
+    patternId: "flora-birth",
+    label: "Birth pattern",
+    staminaCost: 80,
+  },
   { essenceId: "tree", patternId: "cell", label: "Cell", staminaCost: 1 },
   {
     essenceId: "tree",
     patternId: "five-cell-cross",
     label: "5-cell cross",
     staminaCost: 50,
+  },
+  {
+    essenceId: "tree",
+    patternId: "tree-birth",
+    label: "Birth pattern",
+    staminaCost: 40,
   },
 ];
 

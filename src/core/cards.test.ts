@@ -13,6 +13,7 @@ describe("card definitions", () => {
       { id: "high-life", label: "HighLife" },
       { id: "static", label: "Static" },
       { id: "mushroom", label: "Mushroom" },
+      { id: "flora", label: "Flora" },
       { id: "tree", label: "Tree" },
     ]);
   });
@@ -22,7 +23,7 @@ describe("card definitions", () => {
       createCardId(essenceId, patternId),
     );
 
-    expect(ids).toHaveLength(21);
+    expect(ids).toHaveLength(25);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -46,8 +47,13 @@ describe("card definitions", () => {
     ]);
     expect(idsFor("high-life")).toEqual(idsFor("game-of-life"));
     expect(idsFor("static")).toEqual(["cell"]);
-    expect(idsFor("mushroom")).toEqual(["cell", "horizontal-line"]);
-    expect(idsFor("tree")).toEqual(["cell", "five-cell-cross"]);
+    expect(idsFor("mushroom")).toEqual([
+      "cell",
+      "horizontal-line",
+      "mushroom-birth",
+    ]);
+    expect(idsFor("flora")).toEqual(["cell", "flora-birth"]);
+    expect(idsFor("tree")).toEqual(["cell", "five-cell-cross", "tree-birth"]);
   });
 
   it("resolves only combinations declared by the core catalog", () => {

@@ -3,6 +3,7 @@ import { MapModel } from "./MapModel";
 import { StaticEssence } from "./model/essences/StaticEssence";
 import {
   DEFAULT_TREE_COLOR,
+  TREE_BIRTH_PATTERN,
   TREE_NEIGHBOR_DEGREES_MODIFIER,
   TreeEssence,
 } from "./model/essences/TreeEssence";
@@ -18,7 +19,7 @@ function weatherForCycle(cycle: number) {
 }
 
 describe("TreeEssence", () => {
-  it("is static and uses its default green color", () => {
+  it("keeps isolated cells alive and uses its default green color", () => {
     const essence = new TreeEssence();
     const aliveIndices = new Set([12]);
 
@@ -31,6 +32,20 @@ describe("TreeEssence", () => {
         globalLivingIndices: aliveIndices,
       }).aliveIndices,
     ).toEqual([12]);
+  });
+
+  it("births a tree from four diagonal trees", () => {
+    const essence = new TreeEssence();
+    const model = new MapModel(9, 9);
+    const center = { x: 4, y: 4 };
+
+    for (const offset of TREE_BIRTH_PATTERN) {
+      model.setCellAlive(center.x + offset.x, center.y + offset.y, essence);
+    }
+
+    model.step(1, weatherForCycle(1));
+
+    expect(model.getTile(center.x, center.y)?.getEssence()).toBe(essence);
   });
 
   it("adds one temperature modifier to each orthogonal neighbor at birth", () => {

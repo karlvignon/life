@@ -1,5 +1,5 @@
 export type EssenceId =
-  "game-of-life" | "high-life" | "static" | "mushroom" | "tree";
+  "game-of-life" | "high-life" | "static" | "mushroom" | "flora" | "tree";
 
 export type PatternId =
   | "genesis"
@@ -12,6 +12,9 @@ export type PatternId =
   | "cell"
   | "horizontal-line"
   | "five-cell-cross"
+  | "mushroom-birth"
+  | "flora-birth"
+  | "tree-birth"
   | "rle";
 
 export type CardPatternId = Exclude<PatternId, "rle">;

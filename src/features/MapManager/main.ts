@@ -40,6 +40,11 @@ export {
 } from "./model/essences/Essence";
 export { createEssence } from "./model/essences/EssenceCatalog";
 export {
+  DEFAULT_FLORA_COLOR,
+  FLORA_BIRTH_PATTERN,
+  FloraEssence,
+} from "./model/essences/FloraEssence";
+export {
   DEFAULT_GAME_OF_LIFE_COLOR,
   GameOfLifeEssence,
 } from "./model/essences/GameOfLifeEssence";
@@ -49,18 +54,23 @@ export {
 } from "./model/essences/HighLifeEssence";
 export {
   DEFAULT_MUSHROOM_COLOR,
+  MUSHROOM_BIRTH_PATTERN,
   MUSHROOM_COLD_THRESHOLD_DEGREES,
   MUSHROOM_COLD_LIFE_LOSS,
-  MUSHROOM_PROPAGATION_INTERVAL,
   MUSHROOM_WEATHER_REPERCUSSION_INTERVAL,
   MushroomEssence,
 } from "./model/essences/MushroomEssence";
+export {
+  PatternDuplicatorEssence,
+  type BirthPattern,
+} from "./model/essences/PatternDuplicatorEssence";
 export {
   DEFAULT_STATIC_COLOR,
   StaticEssence,
 } from "./model/essences/StaticEssence";
 export {
   DEFAULT_TREE_COLOR,
+  TREE_BIRTH_PATTERN,
   TREE_NEIGHBOR_DEGREES_MODIFIER,
   TreeEssence,
 } from "./model/essences/TreeEssence";
@@ -76,6 +86,7 @@ export { FiveCellCrossPattern } from "./model/patterns/FiveCellCrossPattern";
 export { HighLifeReplicator } from "./model/patterns/HighLifeReplicator";
 export { HorizontalLinePattern } from "./model/patterns/HorizontalLinePattern";
 export { Pattern } from "./model/patterns/Pattern";
+export { PatternDuplicatorCardPattern } from "./model/patterns/PatternDuplicatorCardPattern";
 export { createPattern } from "./model/patterns/PatternCatalog";
 export { RlePattern } from "./model/patterns/RlePattern";
 export { SingleCellPattern } from "./model/patterns/SingleCellPattern";

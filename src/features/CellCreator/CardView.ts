@@ -34,7 +34,7 @@ export class CardView extends Container {
     this.background = new Graphics();
 
     const labelText = new Text({
-      text: card.label,
+      text: `${card.label}\nSTA ${card.staminaCost}`,
       style: {
         fill: TEXT_COLOR,
         fontFamily: "monospace",

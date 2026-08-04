@@ -27,6 +27,10 @@ export class Card {
     return this.definition.essenceId;
   }
 
+  get staminaCost(): number {
+    return this.definition.staminaCost;
+  }
+
   get id(): CardId {
     return createCardId(this.definition.essenceId, this.definition.patternId);
   }

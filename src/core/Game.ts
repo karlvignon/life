@@ -1,5 +1,6 @@
 import { Application } from "pixi.js";
 import { EventBus } from "./EventBus";
+import { GameData, type GameDataConfig } from "./GameData";
 import { gameCycle } from "./GameCycle";
 import { CellCreatorManager } from "../features/CellCreator/main";
 import { GameOptionsManager } from "../features/GameOptions/main";
@@ -8,6 +9,7 @@ import type { GameOptionsConfig } from "../features/GameOptions/main";
 import { DevUIManager, type DevOptions } from "../features/DevUI/main";
 import { SeasonManager, type SeasonConfig } from "../features/Season/main";
 import { WeatherManager, type WeatherConfig } from "../features/Weather/main";
+import { PlayerManager, type PlayerConfig } from "../features/Player/main";
 
 export interface GameConfig {
   map?: MapConfig;
@@ -15,9 +17,12 @@ export interface GameConfig {
   devOptions?: DevOptions;
   season?: SeasonConfig;
   weather?: WeatherConfig;
+  gameData?: GameDataConfig;
+  player?: PlayerConfig;
 }
 
 export class Game {
+  readonly gameData: GameData;
   private readonly app: Application;
   private readonly eventBus = new EventBus();
   private readonly mapManager: MapManager;
@@ -26,9 +31,11 @@ export class Game {
   private readonly devUIManager: DevUIManager | null;
   private readonly seasonManager: SeasonManager;
   private readonly weatherManager: WeatherManager;
+  private readonly playerManager: PlayerManager;
 
   constructor(app: Application, config: GameConfig) {
     this.app = app;
+    this.gameData = new GameData(config.gameData);
     gameCycle.reset();
 
     this.mapManager = new MapManager(app, config.map);
@@ -40,14 +47,23 @@ export class Game {
       this.eventBus,
       config.gameOptions,
     );
+    this.playerManager = new PlayerManager(
+      app,
+      this.gameData.staminaRecoveryPerSecond,
+      config.player,
+    );
     this.cellCreatorManager = new CellCreatorManager(
       app,
       this.eventBus,
       this.mapManager,
+      this.playerManager,
     );
     this.cellCreatorManager.registerUiRootToIgnore(this.mapManager.getUiRoot());
     this.cellCreatorManager.registerUiRootToIgnore(
       this.gameOptionsManager.getUiRoot(),
+    );
+    this.cellCreatorManager.registerUiRootToIgnore(
+      this.playerManager.getUiRoot(),
     );
     this.weatherManager = new WeatherManager(
       app,
@@ -78,15 +94,17 @@ export class Game {
     this.devUIManager?.destroy();
     this.seasonManager.destroy();
     this.weatherManager.destroy();
+    this.cellCreatorManager.destroy();
+    this.playerManager.destroy();
     this.mapManager.destroy();
     this.gameOptionsManager.destroy();
-    this.cellCreatorManager.destroy();
     this.eventBus.clear();
     gameCycle.reset();
   }
 
   private update(dtMs: number): void {
     this.mapManager.update(dtMs);
+    this.playerManager.update(dtMs);
 
     const dueCycles = gameCycle.consumeDueCycles(
       dtMs,
@@ -113,6 +131,7 @@ export class Game {
     this.gameOptionsManager.render();
     this.seasonManager.render();
     this.weatherManager.render();
+    this.playerManager.render();
     this.devUIManager?.render();
   }
 }

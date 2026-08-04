@@ -10,5 +10,6 @@ export type GameEventMap = {
   "game:season-progressed": WeatherTransition;
   "game:weather-changed": WeatherSnapshot;
   "dev:weather-override-changed": WeatherOverride;
+  "dev:card-stamina-cost-changed": { disabled: boolean };
   "game:placeable-selected": { placeable: Placeable | null };
 };

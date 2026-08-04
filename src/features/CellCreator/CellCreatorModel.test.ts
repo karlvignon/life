@@ -40,6 +40,7 @@ describe("CellCreatorModel", () => {
     model.toggleSelectedCard(conwayCellCard);
 
     expect(model.getSelectedCardId()).toBe(conwayCellCard.id);
+    expect(model.getSelectedCardStaminaCost()).toBe(conwayCellCard.staminaCost);
     expect(model.getSelectedPlaceable()?.getEssence()).toBe(conwayEssence);
   });
 
@@ -52,6 +53,7 @@ describe("CellCreatorModel", () => {
 
     expect(model.getSelectedEssence()).toBeInstanceOf(HighLifeEssence);
     expect(model.getSelectedCardId()).toBeNull();
+    expect(model.getSelectedCardStaminaCost()).toBeNull();
     expect(model.getSelectedPlaceable()).toBeNull();
     expect(model.getPreviewPlaceable()).toBeNull();
   });

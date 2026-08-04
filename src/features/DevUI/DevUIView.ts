@@ -24,6 +24,12 @@ export class DevUIView extends Container {
   private readonly overrideLabel: Text;
   private readonly windSlider: DevSlider;
   private readonly degreesSlider: DevSlider;
+  private readonly gameplaySeparator = new Graphics();
+  private readonly gameplayTitle: Text;
+  private readonly cardCostToggle = new Container();
+  private readonly cardCostCheckbox = new Graphics();
+  private readonly cardCostCheckmark = new Graphics();
+  private readonly cardCostLabel: Text;
   private model: DevUIModel | null = null;
 
   constructor(private readonly eventManager: DevUIEventManager) {
@@ -60,6 +66,22 @@ export class DevUIView extends Container {
     this.degreesSlider = new DevSlider("Temperature", (degrees) => {
       this.eventManager.emit("weather-override:degrees-change", { degrees });
     });
+    this.gameplayTitle = new Text({
+      text: "Gameplay",
+      style: {
+        fill: TEXT_COLOR,
+        fontFamily: "monospace",
+        fontSize: 14,
+      },
+    });
+    this.cardCostLabel = new Text({
+      text: "Free cards (no stamina)",
+      style: {
+        fill: SECONDARY_TEXT_COLOR,
+        fontFamily: "monospace",
+        fontSize: 12,
+      },
+    });
 
     this.statsText.position.set(PANEL_PADDING, PANEL_PADDING);
     this.overrideLabel.position.set(CHECKBOX_SIZE + 7, 0);
@@ -67,6 +89,12 @@ export class DevUIView extends Container {
       this.checkbox,
       this.checkmark,
       this.overrideLabel,
+    );
+    this.cardCostLabel.position.set(CHECKBOX_SIZE + 7, 0);
+    this.cardCostToggle.addChild(
+      this.cardCostCheckbox,
+      this.cardCostCheckmark,
+      this.cardCostLabel,
     );
     this.addChild(
       this.background,
@@ -76,6 +104,9 @@ export class DevUIView extends Container {
       this.overrideToggle,
       this.windSlider,
       this.degreesSlider,
+      this.gameplaySeparator,
+      this.gameplayTitle,
+      this.cardCostToggle,
     );
     this.position.set(12, 12);
     this.bindEvents();
@@ -97,6 +128,7 @@ export class DevUIView extends Container {
 
     const enabled = model.isWeatherOverrideEnabled();
     this.drawCheckbox(enabled);
+    this.drawCardCostCheckbox(model.areCardStaminaCostsDisabled());
     this.windSlider.setState(
       model.getNormalizedWindStrength(),
       model.getWindStrength().toFixed(1),
@@ -123,10 +155,18 @@ export class DevUIView extends Container {
         x >= 0 && x <= CONTROL_WIDTH && y >= 0 && y <= CHECKBOX_SIZE,
     };
     this.overrideToggle.on("pointerdown", this.onToggleOverride);
+    this.cardCostToggle.eventMode = "static";
+    this.cardCostToggle.cursor = "pointer";
+    this.cardCostToggle.hitArea = {
+      contains: (x: number, y: number) =>
+        x >= 0 && x <= CONTROL_WIDTH && y >= 0 && y <= CHECKBOX_SIZE,
+    };
+    this.cardCostToggle.on("pointerdown", this.onToggleCardCost);
   }
 
   private unbindEvents(): void {
     this.overrideToggle.off("pointerdown", this.onToggleOverride);
+    this.cardCostToggle.off("pointerdown", this.onToggleCardCost);
   }
 
   private readonly onToggleOverride = (): void => {
@@ -139,12 +179,25 @@ export class DevUIView extends Container {
     });
   };
 
+  private readonly onToggleCardCost = (): void => {
+    if (!this.model) {
+      return;
+    }
+
+    this.eventManager.emit("card-stamina-cost:toggle", {
+      disabled: !this.model.areCardStaminaCostsDisabled(),
+    });
+  };
+
   private layout(): void {
     const separatorY = this.statsText.y + this.statsText.height + 8;
     const titleY = separatorY + 8;
     const toggleY = titleY + this.weatherTitle.height + 8;
     const windY = toggleY + CHECKBOX_SIZE + 10;
     const degreesY = windY + this.windSlider.controlHeight + 8;
+    const gameplaySeparatorY = degreesY + this.degreesSlider.controlHeight + 8;
+    const gameplayTitleY = gameplaySeparatorY + 8;
+    const cardCostY = gameplayTitleY + this.gameplayTitle.height + 8;
 
     this.separator.clear();
     this.separator
@@ -154,34 +207,51 @@ export class DevUIView extends Container {
     this.overrideToggle.position.set(PANEL_PADDING, toggleY);
     this.windSlider.position.set(PANEL_PADDING, windY);
     this.degreesSlider.position.set(PANEL_PADDING, degreesY);
+    this.gameplaySeparator.clear();
+    this.gameplaySeparator
+      .rect(PANEL_PADDING, gameplaySeparatorY, CONTROL_WIDTH, 1)
+      .fill(PANEL_BORDER);
+    this.gameplayTitle.position.set(PANEL_PADDING, gameplayTitleY);
+    this.cardCostToggle.position.set(PANEL_PADDING, cardCostY);
   }
 
   private drawCheckbox(enabled: boolean): void {
-    this.checkbox.clear();
-    this.checkbox
-      .roundRect(0, 0, CHECKBOX_SIZE, CHECKBOX_SIZE, 3)
-      .fill(enabled ? TEXT_COLOR : PANEL_BACKGROUND)
-      .stroke({ width: 1, color: enabled ? TEXT_COLOR : DISABLED_COLOR });
+    drawCheckbox(this.checkbox, this.checkmark, enabled);
+  }
 
-    this.checkmark.clear();
-    if (enabled) {
-      this.checkmark
-        .moveTo(4, 8)
-        .lineTo(7, 11)
-        .lineTo(12, 5)
-        .stroke({ width: 2, color: PANEL_BACKGROUND });
-    }
+  private drawCardCostCheckbox(enabled: boolean): void {
+    drawCheckbox(this.cardCostCheckbox, this.cardCostCheckmark, enabled);
   }
 
   private drawBackground(): void {
-    const height =
-      this.degreesSlider.y + this.degreesSlider.controlHeight + PANEL_PADDING;
+    const height = this.cardCostToggle.y + CHECKBOX_SIZE + PANEL_PADDING;
 
     this.background.clear();
     this.background
       .roundRect(0, 0, PANEL_WIDTH, height, 6)
       .fill(PANEL_BACKGROUND)
       .stroke({ width: 1, color: PANEL_BORDER });
+  }
+}
+
+function drawCheckbox(
+  checkbox: Graphics,
+  checkmark: Graphics,
+  enabled: boolean,
+): void {
+  checkbox.clear();
+  checkbox
+    .roundRect(0, 0, CHECKBOX_SIZE, CHECKBOX_SIZE, 3)
+    .fill(enabled ? TEXT_COLOR : PANEL_BACKGROUND)
+    .stroke({ width: 1, color: enabled ? TEXT_COLOR : DISABLED_COLOR });
+
+  checkmark.clear();
+  if (enabled) {
+    checkmark
+      .moveTo(4, 8)
+      .lineTo(7, 11)
+      .lineTo(12, 5)
+      .stroke({ width: 2, color: PANEL_BACKGROUND });
   }
 }
 

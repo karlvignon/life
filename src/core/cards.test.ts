@@ -57,4 +57,10 @@ describe("card definitions", () => {
     expect(getCardDefinition("static", "glider")).toBeUndefined();
     expect(getCardDefinition("mushroom", "rle")).toBeUndefined();
   });
+
+  it("declares a positive stamina cost for every card", () => {
+    for (const definition of CARD_DEFINITIONS) {
+      expect(definition.staminaCost).toBeGreaterThan(0);
+    }
+  });
 });

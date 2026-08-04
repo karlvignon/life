@@ -6,6 +6,7 @@ export interface DevOptions {
 }
 
 export type DevUIEventMap = {
+  "card-stamina-cost:toggle": { disabled: boolean };
   "weather-override:toggle": { enabled: boolean };
   "weather-override:wind-change": { windStrength: number };
   "weather-override:degrees-change": { degrees: number };

@@ -11,6 +11,7 @@ export class DevUIModel {
   private readonly renderTimesMs: number[] = [];
   private renderTimeTotalMs = 0;
   private weatherOverrideEnabled = false;
+  private cardStaminaCostsDisabled = false;
   private windStrength = MIN_OVERRIDE_WIND_STRENGTH;
   private degrees = 0;
 
@@ -47,6 +48,14 @@ export class DevUIModel {
     }
 
     return this.renderTimeTotalMs / this.renderTimesMs.length;
+  }
+
+  setCardStaminaCostsDisabled(disabled: boolean): void {
+    this.cardStaminaCostsDisabled = disabled;
+  }
+
+  areCardStaminaCostsDisabled(): boolean {
+    return this.cardStaminaCostsDisabled;
   }
 
   syncWeather(snapshot: WeatherValues): void {

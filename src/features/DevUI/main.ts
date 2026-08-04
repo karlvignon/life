@@ -65,6 +65,14 @@ export class DevUIManager {
   }
 
   private bindEvents(): void {
+    this.eventManager.on("card-stamina-cost:toggle", ({ disabled }) => {
+      this.model.setCardStaminaCostsDisabled(disabled);
+      this.view.syncFromModel(this.model);
+      this.gameEventBus.emit<GameEventMap["dev:card-stamina-cost-changed"]>(
+        "dev:card-stamina-cost-changed",
+        { disabled },
+      );
+    });
     this.eventManager.on("weather-override:toggle", ({ enabled }) => {
       this.model.setWeatherOverrideEnabled(enabled);
       this.view.syncFromModel(this.model);

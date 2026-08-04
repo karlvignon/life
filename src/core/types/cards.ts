@@ -26,4 +26,5 @@ export interface CardDefinition {
   readonly essenceId: EssenceId;
   readonly patternId: CardPatternId;
   readonly label: string;
+  readonly staminaCost: number;
 }

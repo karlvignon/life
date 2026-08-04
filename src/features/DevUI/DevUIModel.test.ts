@@ -41,6 +41,14 @@ describe("DevUIModel", () => {
     expect(model.getAverageRenderTimeMs()).toBe(0);
   });
 
+  it("toggles card stamina costs", () => {
+    const model = new DevUIModel();
+
+    expect(model.areCardStaminaCostsDisabled()).toBe(false);
+    model.setCardStaminaCostsDisabled(true);
+    expect(model.areCardStaminaCostsDisabled()).toBe(true);
+  });
+
   it("tracks live weather while override is disabled", () => {
     const model = new DevUIModel();
 

@@ -6,6 +6,7 @@ import {
 } from "pixi.js";
 import type { EventBus } from "../../core/EventBus";
 import type { GameEventMap } from "../../core/types/gameEvents";
+import type { StaminaConsumer } from "../../core/types/player";
 import type { MapManager } from "../MapManager/main";
 import { CardSelectorView } from "./CardSelectorView";
 import {
@@ -31,7 +32,9 @@ export class CellCreatorManager {
   private readonly view: CardSelectorView;
   private readonly essenceSelectorView: EssenceSelectorView;
   private readonly previewView = new PlaceablePreviewView();
+  private readonly unsubscribeCardStaminaCostChanged: () => void;
   private boundMapView: Container | null = null;
+  private cardStaminaCostDisabled = false;
 
   private readonly onResize = (): void => {
     this.layout();
@@ -43,7 +46,15 @@ export class CellCreatorManager {
     }
 
     const placement = this.model.createPlacement();
-    if (!placement) {
+    const staminaCost = this.model.getSelectedCardStaminaCost();
+    if (!placement || staminaCost === null) {
+      return;
+    }
+
+    if (
+      !this.cardStaminaCostDisabled &&
+      !this.staminaConsumer.trySpendStamina(staminaCost)
+    ) {
       return;
     }
 
@@ -54,6 +65,7 @@ export class CellCreatorManager {
     app: Application,
     gameEventBus: EventBus,
     mapManager: MapManager,
+    private readonly staminaConsumer: StaminaConsumer,
   ) {
     this.app = app;
     this.gameEventBus = gameEventBus;
@@ -73,6 +85,11 @@ export class CellCreatorManager {
     this.syncSelectionViews();
 
     this.bindEvents();
+    this.unsubscribeCardStaminaCostChanged = this.gameEventBus.on<
+      GameEventMap["dev:card-stamina-cost-changed"]
+    >("dev:card-stamina-cost-changed", ({ disabled }) => {
+      this.cardStaminaCostDisabled = disabled;
+    });
     this.layout();
 
     window.addEventListener("resize", this.onResize);
@@ -121,6 +138,7 @@ export class CellCreatorManager {
 
   destroy(): void {
     window.removeEventListener("resize", this.onResize);
+    this.unsubscribeCardStaminaCostChanged();
     this.unbindMapViewEvents();
     this.eventManager.destroy();
 

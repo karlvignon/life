@@ -58,6 +58,10 @@ export class CellCreatorModel {
     return this.selectedCard?.id ?? null;
   }
 
+  getSelectedCardStaminaCost(): number | null {
+    return this.selectedCard?.staminaCost ?? null;
+  }
+
   getSelectedPlaceable(): Placeable | null {
     return this.selectedPlaceable;
   }

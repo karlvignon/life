@@ -23,6 +23,7 @@ const TEMPERATURE_MODIFIERS: ReadonlyArray<BirthModifierDefinition> =
 
 /** Essence immobile qui rafraîchit ses quatre voisines orthogonales. */
 export class TreeEssence extends StaticEssence {
+  override readonly id = "tree";
   override readonly name: string = "Tree";
 
   constructor(color: number = DEFAULT_TREE_COLOR) {

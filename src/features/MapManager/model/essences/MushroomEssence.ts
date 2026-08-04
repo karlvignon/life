@@ -92,6 +92,7 @@ function collectEnemyNeighbors(
 /** Propagation lente — naissance et mort tous les 10 cycles selon le voisinage. */
 export class MushroomEssence extends Essence {
   readonly color: number;
+  readonly id = "mushroom";
   readonly name: string = "Mushroom";
 
   constructor(color: number = DEFAULT_MUSHROOM_COLOR) {

@@ -47,7 +47,8 @@ describe("MapModel", () => {
   it("oscillates a blinker over 2 generations", () => {
     const model = new MapModel(5, 5);
     const placeable = Placeable.centerOnGrid(
-      new BlinkerOscillator(essence),
+      new BlinkerOscillator(),
+      essence,
       5,
       5,
     );
@@ -80,7 +81,10 @@ describe("MapModel", () => {
 
   it("returns a small delta for blinker steps", () => {
     const model = new MapModel(5, 5);
-    place(model, Placeable.centerOnGrid(new BlinkerOscillator(essence), 5, 5));
+    place(
+      model,
+      Placeable.centerOnGrid(new BlinkerOscillator(), essence, 5, 5),
+    );
 
     const delta = advanceStep(model);
 
@@ -91,7 +95,8 @@ describe("MapModel", () => {
   it("assigns the triggering essence to born cells", () => {
     const model = new MapModel(5, 5);
     const placeable = Placeable.centerOnGrid(
-      new BlinkerOscillator(essence),
+      new BlinkerOscillator(),
+      essence,
       5,
       5,
     );
@@ -106,7 +111,8 @@ describe("MapModel", () => {
   it("preserves essence on resize", () => {
     const model = new MapModel(5, 5);
     const placeable = Placeable.centerOnGrid(
-      new BlinkerOscillator(essence),
+      new BlinkerOscillator(),
+      essence,
       5,
       5,
     );
@@ -124,8 +130,8 @@ describe("MapModel", () => {
     const essenceB = new GameOfLifeEssence();
 
     const model = new MapModel(10, 5);
-    place(model, new Placeable(new BlinkerOscillator(essenceA), 1, 1));
-    place(model, new Placeable(new BlinkerOscillator(essenceB), 6, 1));
+    place(model, new Placeable(new BlinkerOscillator(), essenceA, 1, 1));
+    place(model, new Placeable(new BlinkerOscillator(), essenceB, 6, 1));
 
     expect(model.getLivingCells()).toHaveLength(6);
 
@@ -146,7 +152,7 @@ describe("MapModel", () => {
     const essenceA = new GameOfLifeEssence();
 
     const model = new MapModel(5, 5);
-    place(model, new Placeable(new BlinkerOscillator(essenceA), 1, 1));
+    place(model, new Placeable(new BlinkerOscillator(), essenceA, 1, 1));
 
     advanceStep(model);
 
@@ -188,7 +194,8 @@ describe("MapModel", () => {
     const highLifeEssence = new HighLifeEssence();
     const model = new MapModel(10, 10);
     const placeable = Placeable.centerOnGrid(
-      new HighLifeReplicator(highLifeEssence),
+      new HighLifeReplicator(),
+      highLifeEssence,
       10,
       10,
     );
@@ -356,7 +363,8 @@ describe("MapModel", () => {
     const mushroomEssence = new MushroomEssence();
     const model = new MapModel(5, 5);
     const placeable = Placeable.centerOnGrid(
-      new SingleCellPattern(mushroomEssence),
+      new SingleCellPattern(),
+      mushroomEssence,
       5,
       5,
     );

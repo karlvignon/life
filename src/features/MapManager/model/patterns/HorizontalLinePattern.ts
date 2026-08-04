@@ -1,9 +1,9 @@
-import { Pattern } from "./Pattern";
 import type { CellOffset } from "../../../../core/types/grid";
+import { Pattern } from "./Pattern";
 
-/** Oscillateur période 2 — 3 cellules en ligne. */
-export class BlinkerOscillator extends Pattern {
-  readonly id = "blinker";
+/** Motif générique de trois cellules alignées horizontalement. */
+export class HorizontalLinePattern extends Pattern {
+  readonly id = "horizontal-line";
 
   getCells(): ReadonlyArray<CellOffset> {
     return [

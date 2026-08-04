@@ -4,82 +4,87 @@ import {
   HighLifeEssence,
   SingleCellPattern,
 } from "../MapManager/main";
+import { Card } from "./Card";
 import { CellCreatorModel } from "./CellCreatorModel";
-import type { EssenceDefinition, PatternDefinition } from "./types";
+import type { EssenceDefinition } from "./types";
 
+const conwayEssence = new GameOfLifeEssence();
 const conwayDefinition: EssenceDefinition = {
   id: "game-of-life",
   label: "Conway",
-  essence: new GameOfLifeEssence(),
+  essence: conwayEssence,
 };
 
+const highLifeEssence = new HighLifeEssence();
 const highLifeDefinition: EssenceDefinition = {
   id: "high-life",
   label: "HighLife",
-  essence: new HighLifeEssence(),
+  essence: highLifeEssence,
 };
 
-const cellPatternDefinition: PatternDefinition = {
-  id: "cell",
-  label: "Cell",
-  createPattern: (essence) => new SingleCellPattern(essence),
-};
+const conwayCellCard = new Card(new SingleCellPattern(), conwayEssence);
+const highLifeCellCard = new Card(new SingleCellPattern(), highLifeEssence);
 
 describe("CellCreatorModel", () => {
   it("starts with the provided essence and no selected pattern", () => {
     const model = new CellCreatorModel(conwayDefinition);
 
     expect(model.getSelectedEssence()).toBeInstanceOf(GameOfLifeEssence);
-    expect(model.getSelectedPatternId()).toBeNull();
+    expect(model.getSelectedCardId()).toBeNull();
     expect(model.getSelectedPlaceable()).toBeNull();
   });
 
-  it("uses the selected essence when selecting a pattern", () => {
+  it("selects a card that belongs to the active essence", () => {
     const model = new CellCreatorModel(conwayDefinition);
 
-    model.toggleSelectedPattern(cellPatternDefinition);
+    model.toggleSelectedCard(conwayCellCard);
 
-    expect(model.getSelectedPatternId()).toBe(cellPatternDefinition.id);
-    expect(model.getSelectedPlaceable()?.getEssence()).toBe(
-      model.getSelectedEssence(),
-    );
+    expect(model.getSelectedCardId()).toBe(conwayCellCard.id);
+    expect(model.getSelectedPlaceable()?.getEssence()).toBe(conwayEssence);
   });
 
-  it("rebuilds the active pattern immediately when the essence changes", () => {
+  it("clears the selected card when the essence changes", () => {
     const model = new CellCreatorModel(conwayDefinition);
-    model.toggleSelectedPattern(cellPatternDefinition);
+    model.toggleSelectedCard(conwayCellCard);
     model.setPreviewOrigin({ x: 4, y: 7 });
 
     model.setSelectedEssence(highLifeDefinition);
 
-    expect(model.getSelectedPatternId()).toBe(cellPatternDefinition.id);
-    expect(model.getSelectedPlaceable()?.getEssence()).toBe(
-      model.getSelectedEssence(),
-    );
     expect(model.getSelectedEssence()).toBeInstanceOf(HighLifeEssence);
-    expect(model.getPreviewPlaceable()?.getOrigin()).toEqual({ x: 4, y: 7 });
+    expect(model.getSelectedCardId()).toBeNull();
+    expect(model.getSelectedPlaceable()).toBeNull();
+    expect(model.getPreviewPlaceable()).toBeNull();
   });
 
-  it("toggles off the active pattern without clearing the essence", () => {
+  it("rejects a card from another essence", () => {
     const model = new CellCreatorModel(conwayDefinition);
-    model.toggleSelectedPattern(cellPatternDefinition);
 
-    model.toggleSelectedPattern(cellPatternDefinition);
+    model.toggleSelectedCard(highLifeCellCard);
 
-    expect(model.getSelectedPatternId()).toBeNull();
+    expect(model.getSelectedCardId()).toBeNull();
+    expect(model.getSelectedPlaceable()).toBeNull();
+  });
+
+  it("toggles off the active card without clearing the essence", () => {
+    const model = new CellCreatorModel(conwayDefinition);
+    model.toggleSelectedCard(conwayCellCard);
+
+    model.toggleSelectedCard(conwayCellCard);
+
+    expect(model.getSelectedCardId()).toBeNull();
     expect(model.getSelectedPlaceable()).toBeNull();
     expect(model.getSelectedEssence()).toBeInstanceOf(GameOfLifeEssence);
   });
 
-  it("creates placements from the selected stateless essence definition", () => {
+  it("creates placements from the selected card", () => {
     const model = new CellCreatorModel(conwayDefinition);
-    model.toggleSelectedPattern(cellPatternDefinition);
+    model.toggleSelectedCard(conwayCellCard);
     model.setPreviewOrigin({ x: 2, y: 3 });
 
     const firstPlacement = model.createPlacement();
     const secondPlacement = model.createPlacement();
     expect(firstPlacement?.getOrigin()).toEqual({ x: 2, y: 3 });
-    expect(firstPlacement?.getEssence()).toBe(conwayDefinition.essence);
-    expect(secondPlacement?.getEssence()).toBe(conwayDefinition.essence);
+    expect(firstPlacement?.getEssence()).toBe(conwayCellCard.essence);
+    expect(secondPlacement?.getEssence()).toBe(conwayCellCard.essence);
   });
 });

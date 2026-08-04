@@ -1,18 +1,17 @@
-import { Pattern } from "./Pattern";
 import type { CellOffset } from "../../../../core/types/grid";
+import { Pattern } from "./Pattern";
 
-/** Oscillateur période 2 — 6 cellules. */
-export class ToadOscillator extends Pattern {
-  readonly id = "toad";
+/** Croix de cinq cellules centrée sur (1, 1). */
+export class FiveCellCrossPattern extends Pattern {
+  readonly id = "five-cell-cross";
 
   getCells(): ReadonlyArray<CellOffset> {
     return [
       { x: 1, y: 0 },
-      { x: 2, y: 0 },
-      { x: 3, y: 0 },
       { x: 0, y: 1 },
       { x: 1, y: 1 },
       { x: 2, y: 1 },
+      { x: 1, y: 2 },
     ];
   }
 }

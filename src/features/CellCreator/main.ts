@@ -7,16 +7,16 @@ import {
 import type { EventBus } from "../../core/EventBus";
 import type { GameEventMap } from "../../core/types/gameEvents";
 import type { MapManager } from "../MapManager/main";
-import { CellCreatorEventManager } from "./CellCreatorEventManager";
-import { CellCreatorModel } from "./CellCreatorModel";
+import { CardSelectorView } from "./CardSelectorView";
 import {
-  createToolbarButtons,
+  CARDS,
   DEFAULT_ESSENCE_DEFINITION,
   ESSENCE_DEFINITIONS,
+  getCard,
   getEssenceDefinition,
-  getPatternDefinition,
-} from "./CreateCellButtons";
-import { CreateButtonsView } from "./CreateButtonsView";
+} from "./Cards";
+import { CellCreatorEventManager } from "./CellCreatorEventManager";
+import { CellCreatorModel } from "./CellCreatorModel";
 import { EssenceSelectorView } from "./EssenceSelectorView";
 import { PlaceablePreviewView } from "./PlaceablePreviewView";
 
@@ -28,7 +28,7 @@ export class CellCreatorManager {
   private readonly model = new CellCreatorModel(DEFAULT_ESSENCE_DEFINITION);
   private readonly eventManager = new CellCreatorEventManager();
   private readonly uiRoot: Container;
-  private readonly view: CreateButtonsView;
+  private readonly view: CardSelectorView;
   private readonly essenceSelectorView: EssenceSelectorView;
   private readonly previewView = new PlaceablePreviewView();
   private boundMapView: Container | null = null;
@@ -64,11 +64,7 @@ export class CellCreatorManager {
     this.app.stage.addChild(this.uiRoot);
     this.uiRootsToIgnore.push(this.uiRoot);
 
-    const buttons = createToolbarButtons(
-      this.eventManager,
-      this.model.getSelectedEssence(),
-    );
-    this.view = new CreateButtonsView(buttons);
+    this.view = new CardSelectorView(CARDS, this.eventManager);
     this.essenceSelectorView = new EssenceSelectorView(
       ESSENCE_DEFINITIONS,
       this.eventManager,
@@ -138,13 +134,13 @@ export class CellCreatorManager {
   }
 
   private bindEvents(): void {
-    this.eventManager.on("pattern:select", ({ patternId }) => {
-      const definition = getPatternDefinition(patternId);
-      if (!definition) {
+    this.eventManager.on("card:select", ({ cardId }) => {
+      const card = getCard(cardId);
+      if (!card) {
         return;
       }
 
-      this.model.toggleSelectedPattern(definition);
+      this.model.toggleSelectedCard(card);
       this.publishSelectedPlaceable();
       this.syncSelectionViews();
     });
@@ -156,14 +152,14 @@ export class CellCreatorManager {
       }
 
       this.model.setSelectedEssence(definition);
-      this.view.syncEssence(this.model.getSelectedEssence());
       this.publishSelectedPlaceable();
       this.syncSelectionViews();
+      this.layout();
     });
 
     this.eventManager.on("map:clear", () => {
       this.mapManager.clearMap();
-      this.model.clearSelectedPattern();
+      this.model.clearSelectedCard();
       this.publishSelectedPlaceable();
       this.syncSelectionViews();
     });
@@ -197,7 +193,8 @@ export class CellCreatorManager {
   }
 
   private syncSelectionViews(): void {
-    this.view.syncSelectedPattern(this.model.getSelectedPatternId());
+    this.view.syncSelectedEssence(this.model.getSelectedEssenceDefinition().id);
+    this.view.syncSelectedCard(this.model.getSelectedCardId());
     this.essenceSelectorView.syncSelectedEssence(
       this.model.getSelectedEssenceDefinition().id,
     );

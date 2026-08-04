@@ -1,12 +1,9 @@
-import type { Essence } from "../essences/Essence";
 import { Spaceship } from "./Spaceship";
 import type { CellOffset } from "../../../../core/types/grid";
 
 /** Plus petit vaisseau diagonal (c/4), découvert en 1970. */
 export class GliderSpaceship extends Spaceship {
-  constructor(essence: Essence) {
-    super(essence);
-  }
+  readonly id = "glider";
 
   getCells(): ReadonlyArray<CellOffset> {
     return [

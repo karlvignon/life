@@ -30,7 +30,7 @@ describe("MapModel performance baselines", () => {
     const model = new MapModel(120, 67);
     place(
       model,
-      Placeable.centerOnGrid(new BlinkerOscillator(essence), 120, 67),
+      Placeable.centerOnGrid(new BlinkerOscillator(), essence, 120, 67),
     );
 
     expect(model.getLivingCount()).toBe(3);
@@ -41,7 +41,7 @@ describe("MapModel performance baselines", () => {
     const model = new MapModel(120, 67);
     place(
       model,
-      Placeable.centerOnGrid(new BlinkerOscillator(essence), 120, 67),
+      Placeable.centerOnGrid(new BlinkerOscillator(), essence, 120, 67),
     );
 
     let maxDelta = 0;

@@ -14,6 +14,7 @@ import { TileInfoView } from "./TileInfoView";
 import type { CellChangeSet } from "./model/CellChangeSet";
 import { Placeable } from "./model/Placeable";
 import { Tile } from "./model/Tile";
+import type { Essence } from "./model/essences/Essence";
 import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 import { GenesisSpaceship } from "./model/spaceships/GenesisSpaceship";
 import { Spaceship } from "./model/spaceships/Spaceship";
@@ -37,6 +38,7 @@ export {
   type EssenceProperties,
   type EssencePropertiesDelta,
 } from "./model/essences/Essence";
+export { createEssence } from "./model/essences/EssenceCatalog";
 export {
   DEFAULT_GAME_OF_LIFE_COLOR,
   GameOfLifeEssence,
@@ -70,8 +72,11 @@ export {
   type WeatherProperty,
 } from "./model/modifiers/Modifier";
 export { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
+export { FiveCellCrossPattern } from "./model/patterns/FiveCellCrossPattern";
 export { HighLifeReplicator } from "./model/patterns/HighLifeReplicator";
+export { HorizontalLinePattern } from "./model/patterns/HorizontalLinePattern";
 export { Pattern } from "./model/patterns/Pattern";
+export { createPattern } from "./model/patterns/PatternCatalog";
 export { RlePattern } from "./model/patterns/RlePattern";
 export { SingleCellPattern } from "./model/patterns/SingleCellPattern";
 export { ToadOscillator } from "./model/patterns/ToadOscillator";
@@ -89,6 +94,7 @@ export class MapManager {
   private readonly uiRoot: Container;
   private readonly cellSize: number;
   private readonly initialSpaceship: Spaceship;
+  private readonly initialEssence: Essence;
   private readonly eventManager = new MapEventManager();
   private readonly chunkRenderDebugModel = new ChunkRenderDebugModel();
   private readonly chunkRenderDebugView: ChunkRenderDebugView;
@@ -116,8 +122,8 @@ export class MapManager {
     this.cellSize = config.cellSize ?? DEFAULT_CELL_SIZE;
     this.chunkRenderDebugView = new ChunkRenderDebugView(this.cellSize);
     const defaultEssence = config.defaultEssence ?? new GameOfLifeEssence();
-    this.initialSpaceship =
-      config.initialSpaceship ?? new GenesisSpaceship(defaultEssence);
+    this.initialSpaceship = config.initialSpaceship ?? new GenesisSpaceship();
+    this.initialEssence = defaultEssence;
 
     this.uiRoot = new Container();
     this.uiRoot.label = "uiRoot";
@@ -402,6 +408,7 @@ export class MapManager {
 
     const placeable = Placeable.centerOnGrid(
       this.initialSpaceship,
+      this.initialEssence,
       this.model.gridWidth,
       this.model.gridHeight,
     );

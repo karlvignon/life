@@ -1,10 +1,11 @@
 import { Placeable, type Essence } from "../MapManager/main";
 import type { CellOffset } from "../../core/types/grid";
-import type { EssenceDefinition, PatternDefinition, PatternId } from "./types";
+import type { Card } from "./Card";
+import type { CardId, EssenceDefinition } from "./types";
 
 export class CellCreatorModel {
   private selectedEssence: EssenceDefinition;
-  private selectedPattern: PatternDefinition | null = null;
+  private selectedCard: Card | null = null;
   private selectedPlaceable: Placeable | null = null;
   private previewOrigin: CellOffset | null = null;
 
@@ -13,8 +14,12 @@ export class CellCreatorModel {
   }
 
   setSelectedEssence(definition: EssenceDefinition): void {
+    if (this.selectedEssence.id === definition.id) {
+      return;
+    }
+
     this.selectedEssence = definition;
-    this.rebuildSelectedPlaceable();
+    this.clearSelectedCard();
   }
 
   getSelectedEssence(): Essence {
@@ -25,25 +30,32 @@ export class CellCreatorModel {
     return this.selectedEssence;
   }
 
-  toggleSelectedPattern(definition: PatternDefinition): void {
-    if (this.selectedPattern?.id === definition.id) {
-      this.clearSelectedPattern();
+  toggleSelectedCard(card: Card): void {
+    if (
+      card.essenceId !== this.selectedEssence.id ||
+      card.essence !== this.selectedEssence.essence
+    ) {
       return;
     }
 
-    this.selectedPattern = definition;
+    if (this.selectedCard?.id === card.id) {
+      this.clearSelectedCard();
+      return;
+    }
+
+    this.selectedCard = card;
     this.previewOrigin = null;
-    this.rebuildSelectedPlaceable();
+    this.selectedPlaceable = new Placeable(card.pattern, card.essence, 0, 0);
   }
 
-  clearSelectedPattern(): void {
-    this.selectedPattern = null;
+  clearSelectedCard(): void {
+    this.selectedCard = null;
     this.selectedPlaceable = null;
     this.previewOrigin = null;
   }
 
-  getSelectedPatternId(): PatternId | null {
-    return this.selectedPattern?.id ?? null;
+  getSelectedCardId(): CardId | null {
+    return this.selectedCard?.id ?? null;
   }
 
   getSelectedPlaceable(): Placeable | null {
@@ -66,26 +78,15 @@ export class CellCreatorModel {
   }
 
   createPlacement(): Placeable | null {
-    if (!this.selectedPattern || !this.previewOrigin) {
+    if (!this.selectedCard || !this.previewOrigin) {
       return null;
     }
 
-    const pattern = this.selectedPattern.createPattern(
-      this.selectedEssence.essence,
+    return new Placeable(
+      this.selectedCard.pattern,
+      this.selectedCard.essence,
+      this.previewOrigin.x,
+      this.previewOrigin.y,
     );
-    return new Placeable(pattern, this.previewOrigin.x, this.previewOrigin.y);
-  }
-
-  private rebuildSelectedPlaceable(): void {
-    if (!this.selectedPattern) {
-      this.selectedPlaceable = null;
-      this.previewOrigin = null;
-      return;
-    }
-
-    const pattern = this.selectedPattern.createPattern(
-      this.selectedEssence.essence,
-    );
-    this.selectedPlaceable = new Placeable(pattern, 0, 0);
   }
 }

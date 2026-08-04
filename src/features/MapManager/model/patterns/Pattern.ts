@@ -1,12 +1,8 @@
-import type { Essence } from "../essences/Essence";
 import type { CellOffset } from "../../../../core/types/grid";
+import type { PatternId } from "../../../../core/types/cards";
 
 export abstract class Pattern {
-  constructor(protected readonly essence: Essence) {}
-
-  getEssence(): Essence {
-    return this.essence;
-  }
+  abstract readonly id: PatternId;
 
   /** Positions des cellules vivantes relatives à (0, 0) — coin haut-gauche. */
   abstract getCells(): ReadonlyArray<CellOffset>;

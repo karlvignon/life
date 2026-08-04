@@ -1,11 +1,8 @@
-import type { Essence } from "../essences/Essence";
 import { Spaceship } from "./Spaceship";
 import type { CellOffset } from "../../../../core/types/grid";
 
 export class GenesisSpaceship extends Spaceship {
-  constructor(essence: Essence) {
-    super(essence);
-  }
+  readonly id = "genesis";
 
   getCells(): ReadonlyArray<CellOffset> {
     return [

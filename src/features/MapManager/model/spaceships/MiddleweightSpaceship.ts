@@ -1,12 +1,9 @@
-import type { Essence } from "../essences/Essence";
 import { Spaceship } from "./Spaceship";
 import type { CellOffset } from "../../../../core/types/grid";
 
 /** Middleweight spaceship (MWSS) — vaisseau orthogonal classique (c/2, période 4). */
 export class MiddleweightSpaceship extends Spaceship {
-  constructor(essence: Essence) {
-    super(essence);
-  }
+  readonly id = "mwss";
 
   getCells(): ReadonlyArray<CellOffset> {
     return [

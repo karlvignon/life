@@ -5,9 +5,9 @@ import {
   Rectangle,
   Text,
 } from "pixi.js";
-import type { Essence } from "../MapManager/main";
-import { CellCreatorEventManager } from "./CellCreatorEventManager";
-import type { PatternDefinition, PatternId } from "./types";
+import type { Card } from "./Card";
+import type { CellCreatorEventManager } from "./CellCreatorEventManager";
+import type { CardId, EssenceId } from "./types";
 
 const BUTTON_PADDING = 8;
 const BUTTON_BACKGROUND = 0x111827;
@@ -18,28 +18,23 @@ const TEXT_COLOR = 0xf9fafb;
 const PREVIEW_CELL_SIZE = 3;
 const PREVIEW_CELL_GAP = 1;
 
-export class CreateCellButtonView extends Container {
-  private readonly definition: PatternDefinition;
+export class CardView extends Container {
+  private readonly card: Card;
   private readonly eventManager: CellCreatorEventManager;
   private readonly background: Graphics;
-  private readonly previewCells: Graphics[] = [];
   private readonly buttonWidth: number;
   private readonly buttonHeight: number;
   private active = false;
 
-  constructor(
-    eventManager: CellCreatorEventManager,
-    definition: PatternDefinition,
-    essence: Essence,
-  ) {
+  constructor(eventManager: CellCreatorEventManager, card: Card) {
     super();
 
     this.eventManager = eventManager;
-    this.definition = definition;
-
+    this.card = card;
     this.background = new Graphics();
+
     const labelText = new Text({
-      text: definition.label,
+      text: card.label,
       style: {
         fill: TEXT_COLOR,
         fontFamily: "monospace",
@@ -47,7 +42,7 @@ export class CreateCellButtonView extends Container {
       },
     });
 
-    const preview = this.createMiniPreview(essence);
+    const preview = this.createMiniPreview();
     preview.position.set(BUTTON_PADDING, BUTTON_PADDING);
     labelText.position.set(BUTTON_PADDING, BUTTON_PADDING + preview.height + 4);
 
@@ -62,21 +57,15 @@ export class CreateCellButtonView extends Container {
     this.eventMode = "static";
     this.cursor = "pointer";
     this.hitArea = new Rectangle(0, 0, this.buttonWidth, this.buttonHeight);
-
     this.on("pointerdown", this.onPointerDown);
   }
 
-  getPatternId(): PatternId {
-    return this.definition.id;
+  getCardId(): CardId {
+    return this.card.id;
   }
 
-  syncEssence(essence: Essence): void {
-    for (const graphic of this.previewCells) {
-      graphic.clear();
-      graphic
-        .rect(0, 0, PREVIEW_CELL_SIZE, PREVIEW_CELL_SIZE)
-        .fill(essence.color);
-    }
+  getEssenceId(): EssenceId {
+    return this.card.essenceId;
   }
 
   get width(): number {
@@ -88,8 +77,17 @@ export class CreateCellButtonView extends Container {
   }
 
   setActive(active: boolean): void {
+    if (this.active === active) {
+      return;
+    }
+
     this.active = active;
     this.redrawBackground();
+  }
+
+  setAvailable(available: boolean): void {
+    this.visible = available;
+    this.eventMode = available ? "static" : "none";
   }
 
   destroy(): void {
@@ -99,25 +97,20 @@ export class CreateCellButtonView extends Container {
 
   private readonly onPointerDown = (event: FederatedPointerEvent): void => {
     event.stopPropagation();
-    this.eventManager.emit("pattern:select", {
-      patternId: this.definition.id,
-    });
+    this.eventManager.emit("card:select", { cardId: this.card.id });
   };
 
-  private createMiniPreview(essence: Essence): Container {
+  private createMiniPreview(): Container {
     const preview = new Container();
-    const cells = this.definition.createPattern(essence).getCells();
 
-    for (const cell of cells) {
-      const graphic = new Graphics();
-      graphic
+    for (const cell of this.card.pattern.getCells()) {
+      const graphic = new Graphics()
         .rect(0, 0, PREVIEW_CELL_SIZE, PREVIEW_CELL_SIZE)
-        .fill(essence.color);
+        .fill(this.card.essence.color);
       graphic.position.set(
         cell.x * (PREVIEW_CELL_SIZE + PREVIEW_CELL_GAP),
         cell.y * (PREVIEW_CELL_SIZE + PREVIEW_CELL_GAP),
       );
-      this.previewCells.push(graphic);
       preview.addChild(graphic);
     }
 

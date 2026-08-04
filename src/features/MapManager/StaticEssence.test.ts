@@ -48,7 +48,8 @@ describe("StaticEssence", () => {
     const model = new MapModel(10, 10);
 
     const staticPlaceable = new Placeable(
-      new SingleCellPattern(staticEssence),
+      new SingleCellPattern(),
+      staticEssence,
       1,
       1,
     );
@@ -57,7 +58,8 @@ describe("StaticEssence", () => {
       staticPlaceable.getEssence(),
     );
     const conwayPlaceable = new Placeable(
-      new BlinkerOscillator(conwayEssence),
+      new BlinkerOscillator(),
+      conwayEssence,
       5,
       1,
     );

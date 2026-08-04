@@ -1,12 +1,9 @@
-import type { Essence } from "../essences/Essence";
 import { Spaceship } from "./Spaceship";
 import type { CellOffset } from "../../../../core/types/grid";
 
 /** Lightweight spaceship (LWSS) — plus petit vaisseau orthogonal (c/2, période 4). */
 export class LightweightSpaceship extends Spaceship {
-  constructor(essence: Essence) {
-    super(essence);
-  }
+  readonly id = "lwss";
 
   getCells(): ReadonlyArray<CellOffset> {
     return [

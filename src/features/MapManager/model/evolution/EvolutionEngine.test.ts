@@ -43,6 +43,8 @@ describe("EvolutionEngine", () => {
   it("keeps weather outside essence evolution inputs", () => {
     const receivedInputs: EssenceEvolutionInput[] = [];
     class InputRecordingEssence extends Essence {
+      readonly id = "static";
+
       constructor(
         readonly color: number,
         private readonly receivedInputs: EssenceEvolutionInput[],

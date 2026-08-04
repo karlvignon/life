@@ -40,7 +40,7 @@ export const DEFAULT_TILE_INFO_UI_LAYOUT: TileInfoUiLayoutConfig = {
 
 export interface MapConfig {
   cellSize?: number;
-  /** Essence par défaut pour le vaisseau initial si non fourni explicitement. */
+  /** Essence appliquée au vaisseau initial. */
   defaultEssence?: Essence;
   /** Vaisseau initial placé au centre de la grille au premier layout. */
   initialSpaceship?: Spaceship;

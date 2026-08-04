@@ -1,7 +1,7 @@
-import type { Essence, Pattern } from "../MapManager/main";
+import type { Essence } from "../MapManager/main";
+import type { CardId, EssenceId } from "../../core/types/cards";
 
-export type EssenceId =
-  "game-of-life" | "high-life" | "static" | "mushroom" | "tree";
+export type { CardId, EssenceId, PatternId } from "../../core/types/cards";
 
 export interface EssenceDefinition {
   id: EssenceId;
@@ -9,24 +9,8 @@ export interface EssenceDefinition {
   essence: Essence;
 }
 
-export type PatternId =
-  | "genesis"
-  | "glider"
-  | "lwss"
-  | "mwss"
-  | "blinker"
-  | "toad"
-  | "replicator"
-  | "cell";
-
-export interface PatternDefinition {
-  id: PatternId;
-  label: string;
-  createPattern: (essence: Essence) => Pattern;
-}
-
 export type CellCreatorEventMap = {
-  "pattern:select": { patternId: PatternId };
+  "card:select": { cardId: CardId };
   "essence:select": { essenceId: EssenceId };
   "map:clear": void;
 };

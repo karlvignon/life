@@ -5,6 +5,7 @@ import type { CellOffset } from "../../../core/types/grid";
 export class Placeable {
   constructor(
     private readonly pattern: Pattern,
+    private readonly essence: Essence,
     private readonly x: number,
     private readonly y: number,
   ) {}
@@ -14,7 +15,7 @@ export class Placeable {
   }
 
   getEssence(): Essence {
-    return this.pattern.getEssence();
+    return this.essence;
   }
 
   getOrigin(): CellOffset {
@@ -29,11 +30,12 @@ export class Placeable {
   }
 
   withOrigin(x: number, y: number): Placeable {
-    return new Placeable(this.pattern, x, y);
+    return new Placeable(this.pattern, this.essence, x, y);
   }
 
   static centerOnGrid(
     pattern: Pattern,
+    essence: Essence,
     gridWidth: number,
     gridHeight: number,
   ): Placeable {
@@ -41,6 +43,6 @@ export class Placeable {
     const x = Math.floor(gridWidth / 2) - Math.floor(width / 2);
     const y = Math.floor(gridHeight / 2) - Math.floor(height / 2);
 
-    return new Placeable(pattern, x, y);
+    return new Placeable(pattern, essence, x, y);
   }
 }

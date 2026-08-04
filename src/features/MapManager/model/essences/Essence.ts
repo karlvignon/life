@@ -1,4 +1,5 @@
 import type { CellIndex, GridBounds } from "../../../../core/types/grid";
+import type { EssenceId } from "../../../../core/types/cards";
 import type { WeatherSnapshot } from "../../../../core/types/weather";
 import {
   TileData,
@@ -42,6 +43,7 @@ export abstract class Essence {
   };
 
   abstract readonly color: number;
+  abstract readonly id: EssenceId;
   readonly name: string = "Essence";
 
   getInitialProperties(): EssenceProperties {

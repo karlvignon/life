@@ -1,13 +1,13 @@
 import { parseRle } from "../../../../shared/parseRle";
-import type { Essence } from "../essences/Essence";
 import { Pattern } from "./Pattern";
 import type { CellOffset } from "../../../../core/types/grid";
 
 export class RlePattern extends Pattern {
+  readonly id: Pattern["id"] = "rle";
   private readonly cells: CellOffset[];
 
-  constructor(rle: string, essence: Essence) {
-    super(essence);
+  constructor(rle: string) {
+    super();
     this.cells = parseRle(rle);
   }
 

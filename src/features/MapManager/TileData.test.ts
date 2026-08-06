@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { StaticEssence } from "./model/essences/StaticEssence";
 import { Tile } from "./model/Tile";
 import { TileData } from "./model/TileData";
+import { TEST_PROVENANCE } from "./testFixtures";
 
 describe("TileData", () => {
   it("initializes every effective property from one shared input contract", () => {
@@ -39,8 +40,10 @@ describe("TileData", () => {
 
   it("creates independent data instances for tiles of the same essence", () => {
     const essence = new StaticEssence();
-    const first = new Tile(1, 1, true, essence);
-    const second = new Tile(2, 2, true, essence);
+    const first = new Tile(1, 1);
+    const second = new Tile(2, 2);
+    first.makeAlive({ essence, provenance: TEST_PROVENANCE });
+    second.makeAlive({ essence, provenance: TEST_PROVENANCE });
 
     first.getData()?.apply({ life: -40 });
 
@@ -52,16 +55,22 @@ describe("TileData", () => {
   });
 
   it("removes effective data when its tile dies", () => {
-    const tile = new Tile(1, 1, true, new StaticEssence());
+    const tile = new Tile(1, 1);
+    tile.makeAlive({
+      essence: new StaticEssence(),
+      provenance: TEST_PROVENANCE,
+    });
 
-    tile.setAlive(false);
+    tile.kill();
 
     expect(tile.getData()).toBeNull();
+    expect(tile.getProvenance()).toBeNull();
   });
 
   it("keeps effective properties nested in the tile snapshot", () => {
     const essence = new StaticEssence();
-    const tile = new Tile(1, 2, true, essence);
+    const tile = new Tile(1, 2);
+    tile.makeAlive({ essence, provenance: TEST_PROVENANCE });
 
     expect(tile.toSnapshot()).toEqual({
       x: 1,
@@ -73,7 +82,20 @@ describe("TileData", () => {
         maximumLife: 100,
         reproducibility: 10,
       },
+      provenance: TEST_PROVENANCE,
     });
+  });
+
+  it("requires a non-empty owner for every living tile", () => {
+    const tile = new Tile(1, 2);
+
+    expect(() =>
+      tile.makeAlive({
+        essence: new StaticEssence(),
+        provenance: { kind: "player-placement", playerId: "   " },
+      }),
+    ).toThrow(RangeError);
+    expect(tile.isAlive()).toBe(false);
   });
 
   it("validates constructor values", () => {

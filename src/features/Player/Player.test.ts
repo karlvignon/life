@@ -11,6 +11,14 @@ describe("Player", () => {
     });
   });
 
+  it("keeps a stable player identity", () => {
+    const player = new Player({ id: "player-42" });
+
+    expect(player.getId()).toBe("player-42");
+    expect(new Player().getId()).toBe("local-player");
+    expect(() => new Player({ id: "   " })).toThrow(RangeError);
+  });
+
   it("spends stamina only when enough is available", () => {
     const player = new Player({ maximumStamina: 20 });
 

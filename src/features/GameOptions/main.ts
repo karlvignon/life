@@ -1,8 +1,11 @@
 import { Application, Container, Rectangle } from "pixi.js";
 import type { EventBus } from "../../core/EventBus";
-import type { GameEventMap } from "../../core/types/gameEvents";
+import type {
+  GameEventMap,
+  GameSpeedSnapshot,
+} from "../../core/types/gameEvents";
+import type { WeatherSnapshot } from "../../core/types/weather";
 import { GameOptionsView } from "./GameOptionsView";
-import { GameOptionsEventManager } from "./GameOptionsEventManager";
 import { GameOptionsModel } from "./GameOptionsModel";
 import {
   DEFAULT_MAX_SPEED,
@@ -20,7 +23,8 @@ export class GameOptionsManager {
   private readonly uiRoot: Container;
   private readonly model: GameOptionsModel;
   private readonly view: GameOptionsView;
-  private readonly eventManager = new GameOptionsEventManager();
+  private readonly unsubscribeWeatherChanged: () => void;
+  private readonly unsubscribeSpeedChangeRequested: () => void;
 
   private readonly onResize = (): void => {
     this.layout();
@@ -30,6 +34,7 @@ export class GameOptionsManager {
     app: Application,
     gameEventBus: EventBus,
     config: GameOptionsConfig = {},
+    initialWeather?: Readonly<WeatherSnapshot>,
   ) {
     this.app = app;
     this.gameEventBus = gameEventBus;
@@ -39,16 +44,30 @@ export class GameOptionsManager {
       config.maxSpeed ?? DEFAULT_MAX_SPEED,
       config.initialSpeed ?? DEFAULT_SPEED,
     );
+    if (initialWeather) {
+      this.model.syncWeather(initialWeather);
+    }
 
     this.uiRoot = new Container();
     this.uiRoot.label = "gameOptionsUiRoot";
     this.app.stage.addChild(this.uiRoot);
 
-    this.view = new GameOptionsView(this.eventManager, config.layout);
+    this.view = new GameOptionsView(config.layout);
     this.uiRoot.addChild(this.view);
     this.view.syncFromModel(this.model);
 
-    this.bindEvents();
+    this.unsubscribeWeatherChanged = this.gameEventBus.on<
+      GameEventMap["game:weather-changed"]
+    >("game:weather-changed", (weather) => {
+      this.model.syncWeather(weather);
+      this.view.syncFromModel(this.model);
+    });
+    this.unsubscribeSpeedChangeRequested = this.gameEventBus.on<
+      GameEventMap["dev:speed-change-requested"]
+    >("dev:speed-change-requested", ({ speed }) => {
+      this.model.setSpeed(speed);
+      this.emitSpeedChanged();
+    });
     this.layout();
     this.emitSpeedChanged();
 
@@ -59,6 +78,14 @@ export class GameOptionsManager {
     return this.model.getSpeed();
   }
 
+  getSpeedSnapshot(): GameSpeedSnapshot {
+    return {
+      speed: this.model.getSpeed(),
+      minSpeed: this.model.getMinSpeed(),
+      maxSpeed: this.model.getMaxSpeed(),
+    };
+  }
+
   getUiRoot(): Container {
     return this.uiRoot;
   }
@@ -67,7 +94,8 @@ export class GameOptionsManager {
 
   destroy(): void {
     window.removeEventListener("resize", this.onResize);
-    this.eventManager.destroy();
+    this.unsubscribeWeatherChanged();
+    this.unsubscribeSpeedChangeRequested();
 
     this.view.destroy();
     this.uiRoot.removeChild(this.view);
@@ -75,18 +103,10 @@ export class GameOptionsManager {
     this.app.stage.removeChild(this.uiRoot);
   }
 
-  private bindEvents(): void {
-    this.eventManager.on("speed:change", ({ speed }) => {
-      this.model.setSpeed(speed);
-      this.view.syncFromModel(this.model);
-      this.emitSpeedChanged();
-    });
-  }
-
   private emitSpeedChanged(): void {
     this.gameEventBus.emit<GameEventMap["game:speed-changed"]>(
       "game:speed-changed",
-      { speed: this.model.getSpeed() },
+      this.getSpeedSnapshot(),
     );
   }
 

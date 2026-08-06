@@ -15,6 +15,9 @@ import type {
 const PANEL_PADDING = 12;
 const PANEL_MARGIN = 12;
 const PANEL_GAP = 8;
+const BUTTON_COLUMNS = 2;
+const TOP_LEFT_UI_RESERVED_HEIGHT = 380;
+const BOTTOM_LEFT_UI_RESERVED_HEIGHT = 110;
 const PANEL_BACKGROUND = 0x111827;
 const PANEL_BORDER = 0x374151;
 const TEXT_COLOR = 0xf9fafb;
@@ -131,14 +134,27 @@ export class EssenceSelectorView extends Container {
       (definition) => new EssenceButtonView(definition, eventManager),
     );
 
-    let y = PANEL_PADDING + title.height + PANEL_GAP;
-    for (const button of this.buttons) {
-      button.position.set(PANEL_PADDING, y);
-      y += BUTTON_HEIGHT + PANEL_GAP;
+    const buttonsY = PANEL_PADDING + title.height + PANEL_GAP;
+    for (const [index, button] of this.buttons.entries()) {
+      const column = index % BUTTON_COLUMNS;
+      const row = Math.floor(index / BUTTON_COLUMNS);
+      button.position.set(
+        PANEL_PADDING + column * (BUTTON_WIDTH + PANEL_GAP),
+        buttonsY + row * (BUTTON_HEIGHT + PANEL_GAP),
+      );
     }
 
-    const panelWidth = BUTTON_WIDTH + PANEL_PADDING * 2;
-    const panelHeight = y - PANEL_GAP + PANEL_PADDING;
+    const columnCount = Math.min(BUTTON_COLUMNS, this.buttons.length);
+    const rowCount = Math.ceil(this.buttons.length / BUTTON_COLUMNS);
+    const panelWidth =
+      PANEL_PADDING * 2 +
+      columnCount * BUTTON_WIDTH +
+      Math.max(0, columnCount - 1) * PANEL_GAP;
+    const panelHeight =
+      buttonsY +
+      rowCount * BUTTON_HEIGHT +
+      Math.max(0, rowCount - 1) * PANEL_GAP +
+      PANEL_PADDING;
     this.background
       .roundRect(0, 0, panelWidth, panelHeight, 6)
       .fill(PANEL_BACKGROUND)
@@ -154,9 +170,24 @@ export class EssenceSelectorView extends Container {
   }
 
   layoutWithinParent(bounds: ParentLayoutBounds): void {
+    const localBounds = this.getLocalBounds();
+    const availableWidth = Math.max(1, bounds.width - PANEL_MARGIN * 2);
+    const availableHeight = Math.max(
+      1,
+      bounds.height -
+        TOP_LEFT_UI_RESERVED_HEIGHT -
+        BOTTOM_LEFT_UI_RESERVED_HEIGHT,
+    );
+    const scale = Math.min(
+      1,
+      availableWidth / localBounds.width,
+      availableHeight / localBounds.height,
+    );
+    this.scale.set(scale);
     this.position.set(
       PANEL_MARGIN,
-      Math.max(PANEL_MARGIN, (bounds.height - this.height) / 2),
+      TOP_LEFT_UI_RESERVED_HEIGHT +
+        (availableHeight - localBounds.height * scale) / 2,
     );
   }
 

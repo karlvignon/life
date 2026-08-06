@@ -5,6 +5,8 @@ import {
   Rectangle,
 } from "pixi.js";
 import type { WeatherSnapshot } from "../../core/types/weather";
+import type { PlayerId } from "../../core/types/player";
+import type { TeamResolver } from "../../core/types/team";
 import { ChunkRenderDebugModel } from "./ChunkRenderDebugModel";
 import { ChunkRenderDebugView } from "./ChunkRenderDebugView";
 import { MapEventManager } from "./MapEventManager";
@@ -15,13 +17,17 @@ import { TileInfoView } from "./TileInfoView";
 import type { CellChangeSet } from "./model/CellChangeSet";
 import { Placeable } from "./model/Placeable";
 import { Tile } from "./model/Tile";
-import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 import {
   mergeRenderDeltas,
   type MapRenderDelta,
   type MapRenderUpdate,
 } from "./render/types";
-import { computeGridSize, DEFAULT_CELL_SIZE, type MapConfig } from "./types";
+import {
+  computeGridSize,
+  DEFAULT_CELL_SIZE,
+  type MapConfig,
+  type TileSnapshot,
+} from "./types";
 
 export type { CellOffset } from "../../core/types/grid";
 export { ReproductibilityMapView } from "./ReproductibilityMapView";
@@ -30,7 +36,7 @@ export { Tile } from "./model/Tile";
 export {
   TileData,
   type TileDataDelta,
-  type TileDataProperties
+  type TileDataProperties,
 } from "./model/TileData";
 export {
   Essence,
@@ -42,61 +48,64 @@ export {
   type EssencePropertiesDelta,
   type EvolutionBehavior,
   type EvolutionProposal,
-  type WeatherBehavior
+  type WeatherBehavior,
 } from "./model/essences/Essence";
 export {
   createEssence,
   essenceCatalog,
   EssenceCatalog,
-  type EssenceFactory
+  type EssenceFactory,
 } from "./model/essences/EssenceCatalog";
 export {
   DEFAULT_FLORA_COLOR,
   FLORA_BIRTH_PATTERN,
-  FloraEssence
+  FloraEssence,
 } from "./model/essences/FloraEssence";
 export {
   DEFAULT_GAME_OF_LIFE_COLOR,
-  GameOfLifeEssence
+  GameOfLifeEssence,
 } from "./model/essences/GameOfLifeEssence";
 export {
   DEFAULT_HIGHLIFE_COLOR,
-  HighLifeEssence
+  HighLifeEssence,
 } from "./model/essences/HighLifeEssence";
 export {
   DEFAULT_MUSHROOM_COLOR,
-  MUSHROOM_BIRTH_PATTERN, MUSHROOM_COLD_LIFE_LOSS, MUSHROOM_COLD_THRESHOLD_DEGREES, MUSHROOM_WEATHER_REPERCUSSION_INTERVAL,
-  MushroomEssence
+  MUSHROOM_BIRTH_PATTERN,
+  MUSHROOM_COLD_LIFE_LOSS,
+  MUSHROOM_COLD_THRESHOLD_DEGREES,
+  MUSHROOM_WEATHER_REPERCUSSION_INTERVAL,
+  MushroomEssence,
 } from "./model/essences/MushroomEssence";
 export {
   MUSHROOM_SPROUT_BIRTH_PATTERN,
-  MushroomSproutEssence
+  MushroomSproutEssence,
 } from "./model/essences/MushroomSproutEssence";
 export {
   DEFAULT_STATIC_COLOR,
-  StaticEssence
+  StaticEssence,
 } from "./model/essences/StaticEssence";
 export {
   DEFAULT_TREE_COLOR,
   TREE_BIRTH_PATTERN,
   TREE_NEIGHBOR_DEGREES_MODIFIER,
-  TreeEssence
+  TreeEssence,
 } from "./model/essences/TreeEssence";
 export {
   createLifeLikeBehavior,
-  type LifeLikeRules
+  type LifeLikeRules,
 } from "./model/evolution/behaviors/LifeLikeBehavior";
 export {
   createPatternBirthBehavior,
   freezeBirthPattern,
-  type BirthPattern
+  type BirthPattern,
 } from "./model/evolution/behaviors/PatternBirthBehavior";
 export {
   Modifier,
   type ModifierAuthor,
   type ModifierDefinition,
   type ModifierMode,
-  type WeatherProperty
+  type WeatherProperty,
 } from "./model/modifiers/Modifier";
 export { EncodedPattern } from "./model/patterns/EncodedPattern";
 export { Pattern } from "./model/patterns/Pattern";
@@ -104,15 +113,20 @@ export {
   createPattern,
   patternCatalog,
   PatternCatalog,
-  type EncodedPatternDefinition
+  type EncodedPatternDefinition,
 } from "./model/patterns/PatternCatalog";
 export {
   parsePatternEncoding,
   type ParsedPatternEncoding,
-  type PatternEncoding
+  type PatternEncoding,
 } from "./model/patterns/PatternEncoding";
 export { DEFAULT_TILE_INFO_UI_LAYOUT } from "./types";
-export type { MapConfig, TileInfoUiLayoutConfig, TileSnapshot } from "./types";
+export type {
+  MapConfig,
+  TileInfoUiLayoutConfig,
+  TileProvenance,
+  TileSnapshot,
+} from "./types";
 
 export class MapManager {
   private readonly app: Application;
@@ -138,20 +152,22 @@ export class MapManager {
   private chunkRenderDebugDirty = false;
   private reproductibilityMapEnabled = false;
   private reproductibilityMapDirty = false;
+  private teamColorsEnabled = false;
 
   private readonly onResize = (): void => {
     this.layout();
   };
 
-  constructor(app: Application, config: MapConfig = {}) {
+  constructor(
+    app: Application,
+    config: MapConfig = {},
+    private readonly teamResolver?: TeamResolver,
+  ) {
     this.app = app;
     this.stage = app.stage;
     this.cellSize = config.cellSize ?? DEFAULT_CELL_SIZE;
     this.chunkRenderDebugView = new ChunkRenderDebugView(this.cellSize);
     this.reproductibilityMapView = new ReproductibilityMapView(this.cellSize);
-    const defaultEssence = config.defaultEssence ?? new GameOfLifeEssence();
-    this.initialEssence = defaultEssence;
-
     this.uiRoot = new Container();
     this.uiRoot.label = "uiRoot";
     this.stage.addChild(this.uiRoot);
@@ -260,6 +276,15 @@ export class MapManager {
     this.reproductibilityMapDirty = false;
   }
 
+  setTeamColorsEnabled(enabled: boolean): void {
+    if (this.teamColorsEnabled === enabled) {
+      return;
+    }
+
+    this.teamColorsEnabled = enabled;
+    this.queueFullSnapshot();
+  }
+
   getModel(): MapModel | null {
     return this.model;
   }
@@ -278,6 +303,10 @@ export class MapManager {
 
   getCellSize(): number {
     return this.cellSize;
+  }
+
+  getTileSnapshot(x: number, y: number): Readonly<TileSnapshot> | null {
+    return this.model?.getTile(x, y)?.toSnapshot() ?? null;
   }
 
   screenToGrid(
@@ -304,7 +333,7 @@ export class MapManager {
     return { x: gridX, y: gridY };
   }
 
-  placePlaceable(placeable: Placeable): void {
+  placePlaceable(placeable: Placeable, playerId: PlayerId): void {
     if (!this.model) {
       return;
     }
@@ -312,6 +341,7 @@ export class MapManager {
     const changes = this.model.placeCells(
       placeable.getWorldCells(),
       placeable.getEssence(),
+      { kind: "player-placement", playerId },
     );
     this.queueDelta(changes);
     this.tileInfoDirty = this.lastHoveredTile !== null;
@@ -488,7 +518,10 @@ export class MapManager {
 
     this.pendingUpdate = {
       kind: "full",
-      snapshot: this.model.createRenderSnapshot(this.cellSize),
+      snapshot: this.model.createRenderSnapshot(
+        this.cellSize,
+        this.resolvePlayerColor,
+      ),
     };
     this.pendingDelta = null;
     this.renderDirty = true;
@@ -502,11 +535,22 @@ export class MapManager {
 
     const nextDelta: MapRenderDelta = {
       revision: this.model.getRenderRevision(),
-      changedCells: this.model.cellChangesToVisualStates(changeSet),
+      changedCells: this.model.cellChangesToVisualStates(
+        changeSet,
+        this.resolvePlayerColor,
+      ),
     };
 
     this.pendingDelta = mergeRenderDeltas(this.pendingDelta, nextDelta);
     this.pendingUpdate = { kind: "delta", delta: this.pendingDelta };
     this.renderDirty = true;
   }
+
+  private readonly resolvePlayerColor = (playerId: PlayerId): number | null => {
+    if (!this.teamColorsEnabled) {
+      return null;
+    }
+
+    return this.teamResolver?.getPlayerTeam(playerId)?.color ?? null;
+  };
 }

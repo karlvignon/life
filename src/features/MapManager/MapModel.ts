@@ -1,5 +1,6 @@
 import { packIndex } from "../../core/types/grid";
 import type { WeatherSnapshot } from "../../core/types/weather";
+import type { PlayerId } from "../../core/types/player";
 import type { Essence } from "./model/essences/Essence";
 import {
   emptyChangeSet,
@@ -11,7 +12,7 @@ import { computeNextGeneration } from "./model/evolution/EvolutionEngine";
 import { LivingCellRegistry } from "./model/LivingCellRegistry";
 import { Tile } from "./model/Tile";
 import { applyModifiers, Modifier } from "./model/modifiers/Modifier";
-import type { TileSnapshot } from "./types";
+import type { TileProvenance, TileSnapshot } from "./types";
 import {
   deadCellVisualState,
   livingCellVisualState,
@@ -88,7 +89,12 @@ export class MapModel {
     return snapshots;
   }
 
-  setCellAlive(x: number, y: number, essence: Essence): CellChangeSet {
+  setCellAlive(
+    x: number,
+    y: number,
+    essence: Essence,
+    provenance: TileProvenance,
+  ): CellChangeSet {
     const tile = this.getTile(x, y);
     if (!tile) {
       return emptyChangeSet();
@@ -97,22 +103,29 @@ export class MapModel {
     const index = packIndex(x, y, this._gridWidth);
     const wasAlive = tile.isAlive();
     const previousEssence = tile.getEssence();
+    const previousPlayerId = tile.getProvenance()?.playerId;
 
     if (wasAlive && previousEssence && previousEssence !== essence) {
       this.removeModifiersAuthoredBy(x, y, previousEssence);
     }
 
-    tile.setAlive(true, essence);
+    tile.makeAlive({ essence, provenance });
     this.registry.set(index, essence);
+
+    const visualStateChanged =
+      !wasAlive ||
+      previousEssence !== essence ||
+      previousPlayerId !== provenance.playerId;
 
     if (!wasAlive || previousEssence !== essence) {
       this.applyBirthModifiers(x, y, essence);
     }
-    this.renderRevision++;
 
-    if (wasAlive && previousEssence === essence) {
+    if (!visualStateChanged) {
       return emptyChangeSet();
     }
+
+    this.renderRevision++;
 
     return {
       changes: [
@@ -129,6 +142,7 @@ export class MapModel {
   placeCells(
     cells: ReadonlyArray<{ x: number; y: number }>,
     essence: Essence,
+    provenance: TileProvenance,
   ): CellChangeSet {
     const changes: CellChange[] = [];
 
@@ -141,16 +155,24 @@ export class MapModel {
       const index = packIndex(x, y, this._gridWidth);
       const wasAlive = tile.isAlive();
       const previousEssence = tile.getEssence();
+      const previousPlayerId = tile.getProvenance()?.playerId;
 
       if (wasAlive && previousEssence && previousEssence !== essence) {
         this.removeModifiersAuthoredBy(x, y, previousEssence);
       }
 
-      tile.setAlive(true, essence);
+      tile.makeAlive({ essence, provenance });
       this.registry.set(index, essence);
+
+      const visualStateChanged =
+        !wasAlive ||
+        previousEssence !== essence ||
+        previousPlayerId !== provenance.playerId;
 
       if (!wasAlive || previousEssence !== essence) {
         this.applyBirthModifiers(x, y, essence);
+      }
+      if (visualStateChanged) {
         changes.push({ x, y, alive: true, essence });
       }
     }
@@ -171,7 +193,7 @@ export class MapModel {
       if (essence) {
         this.removeModifiersAuthoredBy(x, y, essence);
       }
-      tile?.setAlive(false);
+      tile?.kill();
       changes.push({ x, y, alive: false, essence: null });
     }, this._gridWidth);
 
@@ -193,13 +215,21 @@ export class MapModel {
         continue;
       }
 
+      if (!cell.provenance) {
+        throw new Error("A living tile snapshot must have a provenance");
+      }
+
       const tile = this.getTile(cell.x, cell.y);
       if (!tile) {
         continue;
       }
 
       const index = packIndex(cell.x, cell.y, this._gridWidth);
-      tile.setAlive(true, cell.essence, cell.data);
+      tile.makeAlive({
+        essence: cell.essence,
+        properties: cell.data,
+        provenance: cell.provenance,
+      });
       this.registry.set(index, cell.essence);
       this.applyBirthModifiers(cell.x, cell.y, cell.essence);
       placeChanges.push({
@@ -233,28 +263,40 @@ export class MapModel {
     const living = this.registry.snapshot().map(({ index, essence }) => {
       const x = index % this._gridWidth;
       const y = Math.floor(index / this._gridWidth);
-      const reproducibility = this.getTile(x, y)
-        ?.getData()
-        ?.getReproducibility();
+      const tile = this.getTile(x, y);
+      const reproducibility = tile?.getData()?.getReproducibility();
+      const provenance = tile?.getProvenance();
 
       if (reproducibility === undefined) {
         throw new Error(`Living cell ${index} has no reproducibility data`);
       }
+      if (!provenance) {
+        throw new Error(`Living cell ${index} has no provenance`);
+      }
 
-      return { index, essence, reproducibility };
+      return {
+        index,
+        essence,
+        reproducibility,
+        playerId: provenance.playerId,
+      };
     });
 
     if (living.length === 0) {
       return emptyChangeSet();
     }
 
-    const { nextLiving, reproductionCosts, newbornReproducibility } =
-      computeNextGeneration({
-        bounds: { width: this._gridWidth, height: this._gridHeight },
-        living,
-        currentCycle,
-        essenceOrder: this.registry.getEssenceOrder(),
-      });
+    const {
+      nextLiving,
+      reproductionCosts,
+      newbornReproducibility,
+      newbornPlayerIds,
+    } = computeNextGeneration({
+      bounds: { width: this._gridWidth, height: this._gridHeight },
+      living,
+      currentCycle,
+      essenceOrder: this.registry.getEssenceOrder(),
+    });
 
     for (const [index, cost] of reproductionCosts) {
       const x = index % this._gridWidth;
@@ -292,10 +334,18 @@ export class MapModel {
                 ...change.nextEssence.getInitialProperties(),
                 reproducibility: inheritedReproducibility,
               };
-        tile.setAlive(true, change.nextEssence, properties);
+        const playerId = newbornPlayerIds.get(change.index);
+        if (!playerId) {
+          throw new Error(`Newborn cell ${change.index} has no owning player`);
+        }
+        tile.makeAlive({
+          essence: change.nextEssence,
+          properties,
+          provenance: { kind: "simulation-birth", playerId },
+        });
         this.applyBirthModifiers(change.x, change.y, change.nextEssence);
       } else {
-        tile.setAlive(false);
+        tile.kill();
       }
     }
 
@@ -337,7 +387,7 @@ export class MapModel {
           change.previousEssence,
         );
       }
-      this.getTile(change.x, change.y)?.setAlive(false);
+      this.getTile(change.x, change.y)?.kill();
     }
 
     const changeSet = mergeChangeSets(
@@ -366,11 +416,21 @@ export class MapModel {
     return changeSet;
   }
 
-  createRenderSnapshot(cellSize: number): MapRenderSnapshot {
+  createRenderSnapshot(
+    cellSize: number,
+    resolvePlayerColor?: (playerId: PlayerId) => number | null,
+  ): MapRenderSnapshot {
     const livingCells: CellVisualState[] = [];
 
     this.registry.forEach((_index, essence, x, y) => {
-      livingCells.push(livingCellVisualState(x, y, essence));
+      livingCells.push(
+        livingCellVisualState(
+          x,
+          y,
+          essence,
+          this.resolveLivingCellColor(x, y, essence, resolvePlayerColor),
+        ),
+      );
     }, this._gridWidth);
 
     return {
@@ -397,10 +457,23 @@ export class MapModel {
     return { livingCells };
   }
 
-  cellChangesToVisualStates(changeSet: CellChangeSet): CellVisualState[] {
+  cellChangesToVisualStates(
+    changeSet: CellChangeSet,
+    resolvePlayerColor?: (playerId: PlayerId) => number | null,
+  ): CellVisualState[] {
     return changeSet.changes.map((change) =>
       change.alive && change.essence
-        ? livingCellVisualState(change.x, change.y, change.essence)
+        ? livingCellVisualState(
+            change.x,
+            change.y,
+            change.essence,
+            this.resolveLivingCellColor(
+              change.x,
+              change.y,
+              change.essence,
+              resolvePlayerColor,
+            ),
+          )
         : deadCellVisualState(change.x, change.y),
     );
   }
@@ -422,7 +495,14 @@ export class MapModel {
       const tile = this.getTile(snapshot.x, snapshot.y);
       if (tile && snapshot.essence && snapshot.data) {
         const index = packIndex(snapshot.x, snapshot.y, this._gridWidth);
-        tile.setAlive(true, snapshot.essence, snapshot.data);
+        if (!snapshot.provenance) {
+          throw new Error("A living tile snapshot must have a provenance");
+        }
+        tile.makeAlive({
+          essence: snapshot.essence,
+          properties: snapshot.data,
+          provenance: snapshot.provenance,
+        });
         this.registry.set(index, snapshot.essence);
       }
     }
@@ -442,10 +522,24 @@ export class MapModel {
     for (let y = 0; y < this._gridHeight; y++) {
       const row: Tile[] = [];
       for (let x = 0; x < this._gridWidth; x++) {
-        row.push(new Tile(x, y, false));
+        row.push(new Tile(x, y));
       }
       this.tiles.push(row);
     }
+  }
+
+  private resolveLivingCellColor(
+    x: number,
+    y: number,
+    essence: Essence,
+    resolvePlayerColor?: (playerId: PlayerId) => number | null,
+  ): number {
+    const provenance = this.getTile(x, y)?.getProvenance();
+    if (!provenance) {
+      throw new Error(`Living cell (${x},${y}) has no provenance`);
+    }
+
+    return resolvePlayerColor?.(provenance.playerId) ?? essence.color;
   }
 
   private applyBirthModifiers(x: number, y: number, essence: Essence): void {

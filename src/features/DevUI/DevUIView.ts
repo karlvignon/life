@@ -26,6 +26,7 @@ export class DevUIView extends Container {
   private readonly degreesSlider: DevSlider;
   private readonly gameplaySeparator = new Graphics();
   private readonly gameplayTitle: Text;
+  private readonly speedSlider: DevSlider;
   private readonly cardCostToggle = new Container();
   private readonly cardCostCheckbox = new Graphics();
   private readonly cardCostCheckmark = new Graphics();
@@ -34,6 +35,10 @@ export class DevUIView extends Container {
   private readonly reproductibilityMapCheckbox = new Graphics();
   private readonly reproductibilityMapCheckmark = new Graphics();
   private readonly reproductibilityMapLabel: Text;
+  private readonly teamColorsToggle = new Container();
+  private readonly teamColorsCheckbox = new Graphics();
+  private readonly teamColorsCheckmark = new Graphics();
+  private readonly teamColorsLabel: Text;
   private model: DevUIModel | null = null;
 
   constructor(private readonly eventManager: DevUIEventManager) {
@@ -78,6 +83,9 @@ export class DevUIView extends Container {
         fontSize: 14,
       },
     });
+    this.speedSlider = new DevSlider("Speed", (normalized) => {
+      this.eventManager.emit("speed:change", { normalized });
+    });
     this.cardCostLabel = new Text({
       text: "Free cards (no stamina)",
       style: {
@@ -88,6 +96,14 @@ export class DevUIView extends Container {
     });
     this.reproductibilityMapLabel = new Text({
       text: "Reproductibility scores",
+      style: {
+        fill: SECONDARY_TEXT_COLOR,
+        fontFamily: "monospace",
+        fontSize: 12,
+      },
+    });
+    this.teamColorsLabel = new Text({
+      text: "Team colors (blue / red)",
       style: {
         fill: SECONDARY_TEXT_COLOR,
         fontFamily: "monospace",
@@ -114,6 +130,12 @@ export class DevUIView extends Container {
       this.reproductibilityMapCheckmark,
       this.reproductibilityMapLabel,
     );
+    this.teamColorsLabel.position.set(CHECKBOX_SIZE + 7, 0);
+    this.teamColorsToggle.addChild(
+      this.teamColorsCheckbox,
+      this.teamColorsCheckmark,
+      this.teamColorsLabel,
+    );
     this.addChild(
       this.background,
       this.statsText,
@@ -124,8 +146,10 @@ export class DevUIView extends Container {
       this.degreesSlider,
       this.gameplaySeparator,
       this.gameplayTitle,
+      this.speedSlider,
       this.cardCostToggle,
       this.reproductibilityMapToggle,
+      this.teamColorsToggle,
     );
     this.position.set(12, 12);
     this.bindEvents();
@@ -149,6 +173,12 @@ export class DevUIView extends Container {
     this.drawCheckbox(enabled);
     this.drawCardCostCheckbox(model.areCardStaminaCostsDisabled());
     this.drawReproductibilityMapCheckbox(model.isReproductibilityMapEnabled());
+    this.drawTeamColorsCheckbox(model.areTeamColorsEnabled());
+    this.speedSlider.setState(
+      model.getNormalizedSpeed(),
+      formatSpeed(model.getSpeed()),
+      true,
+    );
     this.windSlider.setState(
       model.getNormalizedWindStrength(),
       model.getWindStrength().toFixed(1),
@@ -192,6 +222,13 @@ export class DevUIView extends Container {
       "pointerdown",
       this.onToggleReproductibilityMap,
     );
+    this.teamColorsToggle.eventMode = "static";
+    this.teamColorsToggle.cursor = "pointer";
+    this.teamColorsToggle.hitArea = {
+      contains: (x: number, y: number) =>
+        x >= 0 && x <= CONTROL_WIDTH && y >= 0 && y <= CHECKBOX_SIZE,
+    };
+    this.teamColorsToggle.on("pointerdown", this.onToggleTeamColors);
   }
 
   private unbindEvents(): void {
@@ -201,6 +238,7 @@ export class DevUIView extends Container {
       "pointerdown",
       this.onToggleReproductibilityMap,
     );
+    this.teamColorsToggle.off("pointerdown", this.onToggleTeamColors);
   }
 
   private readonly onToggleOverride = (): void => {
@@ -233,6 +271,16 @@ export class DevUIView extends Container {
     });
   };
 
+  private readonly onToggleTeamColors = (): void => {
+    if (!this.model) {
+      return;
+    }
+
+    this.eventManager.emit("team-colors:toggle", {
+      enabled: !this.model.areTeamColorsEnabled(),
+    });
+  };
+
   private layout(): void {
     const separatorY = this.statsText.y + this.statsText.height + 8;
     const titleY = separatorY + 8;
@@ -241,8 +289,10 @@ export class DevUIView extends Container {
     const degreesY = windY + this.windSlider.controlHeight + 8;
     const gameplaySeparatorY = degreesY + this.degreesSlider.controlHeight + 8;
     const gameplayTitleY = gameplaySeparatorY + 8;
-    const cardCostY = gameplayTitleY + this.gameplayTitle.height + 8;
+    const speedY = gameplayTitleY + this.gameplayTitle.height + 8;
+    const cardCostY = speedY + this.speedSlider.controlHeight + 8;
     const reproductibilityMapY = cardCostY + CHECKBOX_SIZE + 8;
+    const teamColorsY = reproductibilityMapY + CHECKBOX_SIZE + 8;
 
     this.separator.clear();
     this.separator
@@ -257,11 +307,13 @@ export class DevUIView extends Container {
       .rect(PANEL_PADDING, gameplaySeparatorY, CONTROL_WIDTH, 1)
       .fill(PANEL_BORDER);
     this.gameplayTitle.position.set(PANEL_PADDING, gameplayTitleY);
+    this.speedSlider.position.set(PANEL_PADDING, speedY);
     this.cardCostToggle.position.set(PANEL_PADDING, cardCostY);
     this.reproductibilityMapToggle.position.set(
       PANEL_PADDING,
       reproductibilityMapY,
     );
+    this.teamColorsToggle.position.set(PANEL_PADDING, teamColorsY);
   }
 
   private drawCheckbox(enabled: boolean): void {
@@ -280,9 +332,12 @@ export class DevUIView extends Container {
     );
   }
 
+  private drawTeamColorsCheckbox(enabled: boolean): void {
+    drawCheckbox(this.teamColorsCheckbox, this.teamColorsCheckmark, enabled);
+  }
+
   private drawBackground(): void {
-    const height =
-      this.reproductibilityMapToggle.y + CHECKBOX_SIZE + PANEL_PADDING;
+    const height = this.teamColorsToggle.y + CHECKBOX_SIZE + PANEL_PADDING;
 
     this.background.clear();
     this.background
@@ -290,6 +345,10 @@ export class DevUIView extends Container {
       .fill(PANEL_BACKGROUND)
       .stroke({ width: 1, color: PANEL_BORDER });
   }
+}
+
+function formatSpeed(speed: number): string {
+  return speed <= 0 ? "Paused" : `${speed.toFixed(1)} gen/s`;
 }
 
 function drawCheckbox(

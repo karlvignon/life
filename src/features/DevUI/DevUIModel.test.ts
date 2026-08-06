@@ -57,6 +57,42 @@ describe("DevUIModel", () => {
     expect(model.isReproductibilityMapEnabled()).toBe(true);
   });
 
+  it("toggles team colors", () => {
+    const model = new DevUIModel();
+
+    expect(model.areTeamColorsEnabled()).toBe(false);
+    model.setTeamColorsEnabled(true);
+    expect(model.areTeamColorsEnabled()).toBe(true);
+  });
+
+  it("syncs the game speed and exposes its normalized value", () => {
+    const model = new DevUIModel();
+
+    model.syncSpeed({ speed: 50, minSpeed: 0, maxSpeed: 200 });
+
+    expect(model.getSpeed()).toBe(50);
+    expect(model.getNormalizedSpeed()).toBe(0.25);
+  });
+
+  it("converts the speed slider position into the configured game range", () => {
+    const model = new DevUIModel();
+    model.syncSpeed({ speed: 10, minSpeed: 10, maxSpeed: 110 });
+
+    model.setSpeedFromNormalized(0.75);
+
+    expect(model.getSpeed()).toBe(85);
+  });
+
+  it("clamps speed snapshots and slider positions", () => {
+    const model = new DevUIModel();
+    model.syncSpeed({ speed: 300, minSpeed: 0, maxSpeed: 200 });
+
+    expect(model.getSpeed()).toBe(200);
+
+    model.setSpeedFromNormalized(-1);
+    expect(model.getSpeed()).toBe(0);
+  });
+
   it("tracks live weather while override is disabled", () => {
     const model = new DevUIModel();
 

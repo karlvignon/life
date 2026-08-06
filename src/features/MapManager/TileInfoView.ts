@@ -11,7 +11,7 @@ import { DEFAULT_TILE_INFO_UI_LAYOUT } from "./types";
 
 const PANEL_WIDTH = 236;
 const DEAD_PANEL_HEIGHT = 78;
-const LIVING_PANEL_HEIGHT = 130;
+const LIVING_PANEL_HEIGHT = 150;
 const MODIFIERS_SECTION_GAP = 10;
 const MODIFIERS_HEADER_HEIGHT = 18;
 const MODIFIER_LINE_HEIGHT = 15;
@@ -49,6 +49,14 @@ export class TileInfoView extends Container {
       fontFamily: "monospace",
       fontSize: 11,
       letterSpacing: 0.8,
+    },
+  });
+  private readonly ownerText = new Text({
+    text: "",
+    style: {
+      fill: TEXT_SECONDARY,
+      fontFamily: "monospace",
+      fontSize: 11,
     },
   });
   private readonly lifeLabel = new Text({
@@ -115,6 +123,7 @@ export class TileInfoView extends Container {
       this.statusDot,
       this.titleText,
       this.coordinatesText,
+      this.ownerText,
       this.divider,
       this.lifeLabel,
       this.lifeValue,
@@ -142,14 +151,21 @@ export class TileInfoView extends Container {
     this.coordinatesText.text = `X ${snapshot.x}   ·   Y ${snapshot.y}`;
 
     if (essence && snapshot.data) {
+      if (!snapshot.provenance) {
+        throw new Error("A living tile must have a provenance");
+      }
       const { life, maximumLife } = snapshot.data;
       const lifeRatio =
         maximumLife > 0 ? Math.max(0, Math.min(1, life / maximumLife)) : 0;
 
       this.lifeValue.text = `${life} / ${maximumLife}`;
+      this.ownerText.text = `OWNER  ${snapshot.provenance.playerId}`;
+      this.ownerText.visible = true;
       this.setLifeElementsVisible(true);
       this.drawLifeBar(lifeRatio, accentColor);
     } else {
+      this.ownerText.text = "";
+      this.ownerText.visible = false;
       this.setLifeElementsVisible(false);
     }
 
@@ -213,21 +229,22 @@ export class TileInfoView extends Container {
 
     this.titleText.position.set(PANEL_PADDING + 14, 13);
     this.coordinatesText.position.set(PANEL_PADDING + 14, 43);
+    this.ownerText.position.set(PANEL_PADDING + 14, 59);
   }
 
   private drawLifeBar(lifeRatio: number, accentColor: number): void {
     const contentWidth = PANEL_WIDTH - PANEL_PADDING * 2;
-    const barY = 107;
+    const barY = 127;
     const barHeight = 7;
 
     this.divider.clear();
     this.divider
-      .rect(PANEL_PADDING, 72, contentWidth, 1)
+      .rect(PANEL_PADDING, 92, contentWidth, 1)
       .fill({ color: PANEL_BORDER, alpha: 0.8 });
 
-    this.lifeLabel.position.set(PANEL_PADDING, 83);
+    this.lifeLabel.position.set(PANEL_PADDING, 103);
     this.lifeValue.anchor.set(1, 0);
-    this.lifeValue.position.set(PANEL_WIDTH - PANEL_PADDING, 81);
+    this.lifeValue.position.set(PANEL_WIDTH - PANEL_PADDING, 101);
 
     this.lifeBarBackground.clear();
     this.lifeBarBackground

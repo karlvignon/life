@@ -5,6 +5,7 @@ import {
   FLORA_BIRTH_PATTERN,
   FloraEssence,
 } from "./model/essences/FloraEssence";
+import { setTestCellAlive } from "./testFixtures";
 
 describe("FloraEssence", () => {
   it("uses an eight-flower ring pattern", () => {
@@ -29,7 +30,12 @@ describe("FloraEssence", () => {
     const center = { x: 3, y: 3 };
 
     for (const offset of FLORA_BIRTH_PATTERN) {
-      model.setCellAlive(center.x + offset.x, center.y + offset.y, essence);
+      setTestCellAlive(
+        model,
+        center.x + offset.x,
+        center.y + offset.y,
+        essence,
+      );
     }
 
     model.step(1, {

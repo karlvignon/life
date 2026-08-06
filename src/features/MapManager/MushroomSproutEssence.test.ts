@@ -7,6 +7,7 @@ import {
   MushroomSproutEssence,
 } from "./model/essences/MushroomSproutEssence";
 import { createPattern } from "./model/patterns/PatternCatalog";
+import { placeTestCells, setTestCellAlive } from "./testFixtures";
 
 const WEATHER = Object.freeze({
   cycle: 1,
@@ -40,7 +41,7 @@ describe("MushroomSproutEssence", () => {
       1,
     );
 
-    model.placeCells(placeable.getWorldCells(), essence);
+    placeTestCells(model, placeable.getWorldCells(), essence);
     model.step(1, WEATHER);
 
     expect(model.getTile(2, 1)?.getEssence()).toBe(essence);
@@ -56,14 +57,15 @@ describe("MushroomSproutEssence", () => {
     const sproutBirth = { x: 6, y: 1 };
 
     for (const offset of MUSHROOM_BIRTH_PATTERN) {
-      model.setCellAlive(
+      setTestCellAlive(
+        model,
         parentBirth.x + offset.x,
         parentBirth.y + offset.y,
         essence,
       );
     }
-    model.setCellAlive(sproutBirth.x, sproutBirth.y + 1, essence);
-    model.setCellAlive(sproutBirth.x, sproutBirth.y + 2, essence);
+    setTestCellAlive(model, sproutBirth.x, sproutBirth.y + 1, essence);
+    setTestCellAlive(model, sproutBirth.x, sproutBirth.y + 2, essence);
 
     model.step(1, WEATHER);
 
@@ -84,7 +86,7 @@ describe("MushroomSproutEssence", () => {
       1,
       10,
     );
-    model.placeCells(placeable.getWorldCells(), essence);
+    placeTestCells(model, placeable.getWorldCells(), essence);
 
     for (let cycle = 1; cycle <= 8; cycle++) {
       model.step(cycle, { ...WEATHER, cycle });

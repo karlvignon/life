@@ -1,9 +1,11 @@
+import type { WeatherValues } from "../../core/types/weather";
 import { DEFAULT_MAX_SPEED, DEFAULT_MIN_SPEED, DEFAULT_SPEED } from "./types";
 
 export class GameOptionsModel {
   private readonly minSpeed: number;
   private readonly maxSpeed: number;
   private speed: number;
+  private weather: WeatherValues = { windStrength: 0, degrees: 0 };
 
   constructor(
     minSpeed = DEFAULT_MIN_SPEED,
@@ -42,6 +44,17 @@ export class GameOptionsModel {
   setSpeedFromNormalized(normalized: number): void {
     const clamped = Math.min(1, Math.max(0, normalized));
     this.speed = this.minSpeed + clamped * (this.maxSpeed - this.minSpeed);
+  }
+
+  syncWeather(weather: Readonly<WeatherValues>): void {
+    this.weather = {
+      windStrength: weather.windStrength,
+      degrees: weather.degrees,
+    };
+  }
+
+  getWeather(): Readonly<WeatherValues> {
+    return this.weather;
   }
 
   private clamp(speed: number): number {

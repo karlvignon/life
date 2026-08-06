@@ -8,6 +8,7 @@ import {
   TreeEssence,
 } from "./model/essences/TreeEssence";
 import { applyModifiers } from "./model/modifiers/Modifier";
+import { setTestCellAlive } from "./testFixtures";
 
 function weatherForCycle(cycle: number) {
   return Object.freeze({
@@ -40,7 +41,12 @@ describe("TreeEssence", () => {
     const center = { x: 4, y: 4 };
 
     for (const offset of TREE_BIRTH_PATTERN) {
-      model.setCellAlive(center.x + offset.x, center.y + offset.y, essence);
+      setTestCellAlive(
+        model,
+        center.x + offset.x,
+        center.y + offset.y,
+        essence,
+      );
     }
 
     model.step(1, weatherForCycle(1));
@@ -51,7 +57,7 @@ describe("TreeEssence", () => {
   it("adds one temperature modifier to each orthogonal neighbor at birth", () => {
     const model = new MapModel(5, 5);
     const tree = new TreeEssence();
-    model.setCellAlive(2, 2, tree);
+    setTestCellAlive(model, 2, 2, tree);
 
     for (const [x, y] of [
       [2, 1],
@@ -74,8 +80,8 @@ describe("TreeEssence", () => {
     const model = new MapModel(5, 5);
     const tree = new TreeEssence();
 
-    model.setCellAlive(2, 2, tree);
-    model.setCellAlive(2, 2, tree);
+    setTestCellAlive(model, 2, 2, tree);
+    setTestCellAlive(model, 2, 2, tree);
 
     expect(model.getTile(2, 1)?.getModifiers()).toHaveLength(1);
   });
@@ -83,8 +89,8 @@ describe("TreeEssence", () => {
   it("stacks modifiers from different tree cells", () => {
     const model = new MapModel(5, 5);
     const tree = new TreeEssence();
-    model.setCellAlive(1, 2, tree);
-    model.setCellAlive(3, 2, tree);
+    setTestCellAlive(model, 1, 2, tree);
+    setTestCellAlive(model, 3, 2, tree);
 
     const sharedNeighbor = model.getTile(2, 2);
     expect(sharedNeighbor?.getModifiers()).toHaveLength(2);
@@ -97,10 +103,10 @@ describe("TreeEssence", () => {
   it("removes only the modifiers authored by a replaced tree", () => {
     const model = new MapModel(5, 5);
     const tree = new TreeEssence();
-    model.setCellAlive(1, 2, tree);
-    model.setCellAlive(3, 2, tree);
+    setTestCellAlive(model, 1, 2, tree);
+    setTestCellAlive(model, 3, 2, tree);
 
-    model.setCellAlive(1, 2, new StaticEssence());
+    setTestCellAlive(model, 1, 2, new StaticEssence());
 
     const sharedNeighbor = model.getTile(2, 2);
     expect(sharedNeighbor?.getModifiers()).toHaveLength(1);
@@ -122,8 +128,8 @@ describe("TreeEssence", () => {
 
     const model = new MapModel(5, 5);
     const weatherRecordingEssence = new WeatherRecordingEssence();
-    model.setCellAlive(2, 2, new TreeEssence());
-    model.setCellAlive(2, 1, weatherRecordingEssence);
+    setTestCellAlive(model, 2, 2, new TreeEssence());
+    setTestCellAlive(model, 2, 1, weatherRecordingEssence);
 
     model.step(1, weatherForCycle(1));
 
@@ -140,7 +146,7 @@ describe("TreeEssence", () => {
     }
 
     const model = new MapModel(5, 5);
-    model.setCellAlive(2, 2, new DyingTreeEssence());
+    setTestCellAlive(model, 2, 2, new DyingTreeEssence());
 
     model.step(1, weatherForCycle(1));
 
@@ -150,7 +156,7 @@ describe("TreeEssence", () => {
 
   it("ignores neighbor modifiers outside the grid", () => {
     const model = new MapModel(3, 3);
-    model.setCellAlive(0, 0, new TreeEssence());
+    setTestCellAlive(model, 0, 0, new TreeEssence());
 
     const modifierCount = [
       model.getTile(1, 0),
@@ -163,7 +169,7 @@ describe("TreeEssence", () => {
 
   it("rebuilds modifiers for surviving trees after a resize", () => {
     const model = new MapModel(5, 5);
-    model.setCellAlive(2, 2, new TreeEssence());
+    setTestCellAlive(model, 2, 2, new TreeEssence());
 
     model.resize(6, 6);
 

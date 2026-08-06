@@ -20,10 +20,6 @@ export interface GameOptionsConfig {
   layout?: GameOptionsUiLayoutConfig;
 }
 
-export type GameOptionsEventMap = {
-  "speed:change": { speed: number };
-};
-
 export const DEFAULT_MIN_SPEED = 0;
 export const DEFAULT_MAX_SPEED = 10;
 export const DEFAULT_SPEED = 1;

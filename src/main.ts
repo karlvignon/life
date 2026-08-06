@@ -19,7 +19,8 @@ const devOptions = {
   new Game(app, {
     gameOptions: {
       initialSpeed: 1,
-      maxSpeed: 200,
+      maxSpeed: 20,
+      minSpeed: 0,
     },
     devOptions,
   });

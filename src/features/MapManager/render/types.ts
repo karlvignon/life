@@ -57,12 +57,13 @@ export function livingCellVisualState(
   x: number,
   y: number,
   essence: Essence,
+  fillColor = essence.color,
 ): CellVisualState {
   return {
     x,
     y,
     alive: true,
-    fillColor: essence.color,
+    fillColor,
   };
 }
 

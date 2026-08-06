@@ -7,12 +7,28 @@ import { computeNextGeneration } from "./EvolutionEngine";
 describe("EvolutionEngine", () => {
   const essence = new GameOfLifeEssence();
   const bounds = { width: 5, height: 5 };
+  const playerId = "player-1";
 
   it("oscillates a horizontal blinker to vertical", () => {
     const living = [
-      { index: packIndex(1, 2, bounds.width), essence, reproducibility: 10 },
-      { index: packIndex(2, 2, bounds.width), essence, reproducibility: 10 },
-      { index: packIndex(3, 2, bounds.width), essence, reproducibility: 10 },
+      {
+        index: packIndex(1, 2, bounds.width),
+        essence,
+        reproducibility: 10,
+        playerId,
+      },
+      {
+        index: packIndex(2, 2, bounds.width),
+        essence,
+        reproducibility: 10,
+        playerId,
+      },
+      {
+        index: packIndex(3, 2, bounds.width),
+        essence,
+        reproducibility: 10,
+        playerId,
+      },
     ];
 
     const { nextLiving } = computeNextGeneration({
@@ -64,11 +80,13 @@ describe("EvolutionEngine", () => {
           index: packIndex(1, 1, bounds.width),
           essence: firstEssence,
           reproducibility: 10,
+          playerId,
         },
         {
           index: packIndex(3, 3, bounds.width),
           essence: secondEssence,
           reproducibility: 10,
+          playerId,
         },
       ],
       currentCycle: 4,
@@ -118,11 +136,17 @@ describe("EvolutionEngine", () => {
       {
         bounds,
         living: [
-          { index: parentIndex, essence: essenceA, reproducibility: 10 },
+          {
+            index: parentIndex,
+            essence: essenceA,
+            reproducibility: 10,
+            playerId,
+          },
           {
             index: secondGroupIndex,
             essence: essenceB,
             reproducibility: 10,
+            playerId,
           },
         ],
         currentCycle: 1,
@@ -160,11 +184,17 @@ describe("EvolutionEngine", () => {
     const output = computeNextGeneration({
       bounds,
       living: [
-        { index: parentIndex, essence: twoParentEssence, reproducibility: 2 },
+        {
+          index: parentIndex,
+          essence: twoParentEssence,
+          reproducibility: 2,
+          playerId,
+        },
         {
           index: exhaustedParentIndex,
           essence: twoParentEssence,
           reproducibility: 0,
+          playerId,
         },
       ],
       currentCycle: 1,
@@ -174,5 +204,70 @@ describe("EvolutionEngine", () => {
     expect(output.nextLiving.has(birthIndex)).toBe(false);
     expect(output.reproductionCosts.size).toBe(0);
     expect(output.newbornReproducibility.size).toBe(0);
+  });
+
+  it("does not combine cells owned by different players for a birth", () => {
+    const horizontal = [1, 2, 3].map((x, index) => ({
+      index: packIndex(x, 2, bounds.width),
+      essence,
+      reproducibility: 10,
+      playerId: index === 2 ? "player-2" : playerId,
+    }));
+
+    const output = computeNextGeneration({
+      bounds,
+      living: horizontal,
+      currentCycle: 1,
+      essenceOrder: [essence],
+    });
+
+    expect(output.nextLiving.size).toBe(0);
+    expect(output.newbornPlayerIds.size).toBe(0);
+  });
+
+  it("rejects contested births before charging either player", () => {
+    const birthIndex = packIndex(2, 2, bounds.width);
+    const contestedEssence = new Essence({
+      id: "contested-birth",
+      name: "Contested birth",
+      color: 0xffffff,
+      evolutionBehaviors: [
+        {
+          id: "birth-at-center",
+          evaluate: ({ aliveIndices }) => ({
+            births: [
+              {
+                index: birthIndex,
+                parentIndices: [[...aliveIndices][0]],
+              },
+            ],
+          }),
+        },
+      ],
+    });
+
+    const output = computeNextGeneration({
+      bounds,
+      living: [
+        {
+          index: packIndex(0, 0, bounds.width),
+          essence: contestedEssence,
+          reproducibility: 10,
+          playerId,
+        },
+        {
+          index: packIndex(4, 4, bounds.width),
+          essence: contestedEssence,
+          reproducibility: 10,
+          playerId: "player-2",
+        },
+      ],
+      currentCycle: 1,
+      essenceOrder: [contestedEssence],
+    });
+
+    expect(output.nextLiving.has(birthIndex)).toBe(false);
+    expect(output.reproductionCosts.size).toBe(0);
+    expect(output.newbornPlayerIds.size).toBe(0);
   });
 });

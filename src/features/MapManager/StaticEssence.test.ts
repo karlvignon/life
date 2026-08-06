@@ -9,6 +9,7 @@ import {
 import { MapModel } from "./MapModel";
 import { Placeable } from "./model/Placeable";
 import { createPattern } from "./model/patterns/PatternCatalog";
+import { placeTestCells } from "./testFixtures";
 
 describe("StaticEssence", () => {
   const essence = new StaticEssence();
@@ -52,7 +53,8 @@ describe("StaticEssence", () => {
       1,
       1,
     );
-    model.placeCells(
+    placeTestCells(
+      model,
       staticPlaceable.getWorldCells(),
       staticPlaceable.getEssence(),
     );
@@ -62,7 +64,8 @@ describe("StaticEssence", () => {
       5,
       1,
     );
-    model.placeCells(
+    placeTestCells(
+      model,
       conwayPlaceable.getWorldCells(),
       conwayPlaceable.getEssence(),
     );

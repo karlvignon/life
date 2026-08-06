@@ -1,3 +1,4 @@
+import type { GameSpeedSnapshot } from "../../core/types/gameEvents";
 import type { WeatherValues } from "../../core/types/weather";
 import {
   MAX_OVERRIDE_DEGREES,
@@ -13,6 +14,10 @@ export class DevUIModel {
   private weatherOverrideEnabled = false;
   private cardStaminaCostsDisabled = false;
   private reproductibilityMapEnabled = false;
+  private teamColorsEnabled = false;
+  private minSpeed = 0;
+  private maxSpeed = 10;
+  private speed = 1;
   private windStrength = MIN_OVERRIDE_WIND_STRENGTH;
   private degrees = 0;
 
@@ -65,6 +70,32 @@ export class DevUIModel {
 
   isReproductibilityMapEnabled(): boolean {
     return this.reproductibilityMapEnabled;
+  }
+
+  setTeamColorsEnabled(enabled: boolean): void {
+    this.teamColorsEnabled = enabled;
+  }
+
+  areTeamColorsEnabled(): boolean {
+    return this.teamColorsEnabled;
+  }
+
+  syncSpeed(snapshot: Readonly<GameSpeedSnapshot>): void {
+    this.minSpeed = snapshot.minSpeed;
+    this.maxSpeed = Math.max(snapshot.minSpeed, snapshot.maxSpeed);
+    this.speed = clamp(snapshot.speed, this.minSpeed, this.maxSpeed);
+  }
+
+  setSpeedFromNormalized(normalized: number): void {
+    this.speed = denormalize(normalized, this.minSpeed, this.maxSpeed);
+  }
+
+  getSpeed(): number {
+    return this.speed;
+  }
+
+  getNormalizedSpeed(): number {
+    return normalize(this.speed, this.minSpeed, this.maxSpeed);
   }
 
   syncWeather(snapshot: WeatherValues): void {
@@ -134,5 +165,13 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function normalize(value: number, min: number, max: number): number {
+  if (max === min) {
+    return 0;
+  }
+
   return (value - min) / (max - min);
+}
+
+function denormalize(normalized: number, min: number, max: number): number {
+  return min + clamp(normalized, 0, 1) * (max - min);
 }

@@ -4,12 +4,17 @@ import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 import { MapModel } from "./MapModel";
 import { Placeable } from "./model/Placeable";
 import { createPattern } from "./model/patterns/PatternCatalog";
+import { placeTestCells } from "./testFixtures";
 
 describe("MapModel performance baselines", () => {
   const essence = new GameOfLifeEssence();
 
   function place(model: MapModel, placeable: Placeable) {
-    return model.placeCells(placeable.getWorldCells(), placeable.getEssence());
+    return placeTestCells(
+      model,
+      placeable.getWorldCells(),
+      placeable.getEssence(),
+    );
   }
 
   afterEach(() => {

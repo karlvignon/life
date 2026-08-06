@@ -1,21 +1,24 @@
 import type { Essence, EssencePropertiesDelta } from "./essences/Essence";
 import { Modifier, type ModifierAuthor } from "./modifiers/Modifier";
 import { TileData, type TileDataProperties } from "./TileData";
-import type { TileSnapshot } from "../types";
+import type { TileProvenance, TileSnapshot } from "../types";
+
+export interface LivingTileState {
+  readonly essence: Essence;
+  readonly properties?: TileDataProperties;
+  readonly provenance: TileProvenance;
+}
 
 export class Tile {
   private essence: Essence | null = null;
   private data: TileData | null = null;
+  private provenance: TileProvenance | null = null;
   private modifiers: Modifier[] = [];
 
   constructor(
     public readonly x: number,
     public readonly y: number,
-    alive = false,
-    essence: Essence | null = null,
-  ) {
-    this.setAlive(alive, essence ?? undefined);
-  }
+  ) {}
 
   isAlive(): boolean {
     return this.essence !== null && this.data !== null;
@@ -27,6 +30,10 @@ export class Tile {
 
   getData(): TileData | null {
     return this.data;
+  }
+
+  getProvenance(): TileProvenance | null {
+    return this.provenance;
   }
 
   getModifiers(): ReadonlyArray<Modifier> {
@@ -55,24 +62,26 @@ export class Tile {
     this.data.apply(delta);
   }
 
-  setAlive(
-    alive: boolean,
-    essence?: Essence,
-    properties?: TileDataProperties,
-  ): void {
-    if (alive && essence) {
-      const shouldInitialize = !this.isAlive() || this.essence !== essence;
-      this.essence = essence;
-
-      if (properties) {
-        this.data = new TileData(properties);
-      } else if (shouldInitialize) {
-        this.data = essence.createTileData();
-      }
-    } else if (!alive) {
-      this.essence = null;
-      this.data = null;
+  makeAlive(state: LivingTileState): void {
+    if (!state.provenance.playerId.trim()) {
+      throw new RangeError("tile owner player id must not be empty");
     }
+
+    const shouldInitialize = !this.isAlive() || this.essence !== state.essence;
+    this.essence = state.essence;
+    this.provenance = Object.freeze({ ...state.provenance });
+
+    if (state.properties) {
+      this.data = new TileData(state.properties);
+    } else if (shouldInitialize) {
+      this.data = state.essence.createTileData();
+    }
+  }
+
+  kill(): void {
+    this.essence = null;
+    this.data = null;
+    this.provenance = null;
   }
 
   toSnapshot(): TileSnapshot {
@@ -82,6 +91,7 @@ export class Tile {
       alive: this.isAlive(),
       essence: this.essence,
       data: this.data?.toProperties() ?? null,
+      provenance: this.provenance,
     };
   }
 }

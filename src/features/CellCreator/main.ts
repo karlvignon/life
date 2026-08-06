@@ -6,7 +6,7 @@ import {
 } from "pixi.js";
 import type { EventBus } from "../../core/EventBus";
 import type { GameEventMap } from "../../core/types/gameEvents";
-import type { StaminaConsumer } from "../../core/types/player";
+import type { PlacementActor } from "../../core/types/player";
 import type { MapManager } from "../MapManager/main";
 import { CardSelectorView } from "./CardSelectorView";
 import {
@@ -53,19 +53,22 @@ export class CellCreatorManager {
 
     if (
       !this.cardStaminaCostDisabled &&
-      !this.staminaConsumer.trySpendStamina(staminaCost)
+      !this.placementActor.trySpendStamina(staminaCost)
     ) {
       return;
     }
 
-    this.mapManager.placePlaceable(placement);
+    this.mapManager.placePlaceable(
+      placement,
+      this.placementActor.getPlayerId(),
+    );
   };
 
   constructor(
     app: Application,
     gameEventBus: EventBus,
     mapManager: MapManager,
-    private readonly staminaConsumer: StaminaConsumer,
+    private readonly placementActor: PlacementActor,
   ) {
     this.app = app;
     this.gameEventBus = gameEventBus;

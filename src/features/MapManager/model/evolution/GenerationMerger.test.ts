@@ -6,14 +6,17 @@ import type { EssenceGeneration, LivingCellEntry } from "./types";
 describe("GenerationMerger", () => {
   const essenceA = new GameOfLifeEssence();
   const essenceB = new GameOfLifeEssence();
+  const playerId = "player-1";
 
   function generation(
     essence: GameOfLifeEssence,
     input: number[],
     output: number[],
+    owner = playerId,
   ): EssenceGeneration {
     return {
       essence,
+      playerId: owner,
       inputIndices: new Set(input),
       outputIndices: output,
       outputSet: new Set(output),
@@ -22,7 +25,7 @@ describe("GenerationMerger", () => {
 
   it("keeps survivor with original essence", () => {
     const living: LivingCellEntry[] = [
-      { index: 5, essence: essenceA, reproducibility: 10 },
+      { index: 5, essence: essenceA, reproducibility: 10, playerId },
     ];
     const merged = mergeGenerations(
       living,
@@ -35,7 +38,7 @@ describe("GenerationMerger", () => {
 
   it("drops cells absent from output", () => {
     const living: LivingCellEntry[] = [
-      { index: 5, essence: essenceA, reproducibility: 10 },
+      { index: 5, essence: essenceA, reproducibility: 10, playerId },
     ];
     const merged = mergeGenerations(
       living,
@@ -58,7 +61,7 @@ describe("GenerationMerger", () => {
 
   it("survivor blocks concurrent birth", () => {
     const living: LivingCellEntry[] = [
-      { index: 5, essence: essenceA, reproducibility: 10 },
+      { index: 5, essence: essenceA, reproducibility: 10, playerId },
     ];
     const merged = mergeGenerations(
       living,
@@ -77,5 +80,18 @@ describe("GenerationMerger", () => {
     );
 
     expect(merged.get(7)).toBe(essenceA);
+  });
+
+  it("rejects a birth contested by different players", () => {
+    const merged = mergeGenerations(
+      [],
+      [
+        generation(essenceA, [], [7], playerId),
+        generation(essenceA, [], [7], "player-2"),
+      ],
+      [essenceA],
+    );
+
+    expect(merged.has(7)).toBe(false);
   });
 });

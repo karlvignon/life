@@ -6,8 +6,10 @@ export interface DevOptions {
 }
 
 export type DevUIEventMap = {
+  "speed:change": { normalized: number };
   "card-stamina-cost:toggle": { disabled: boolean };
   "reproductibility-map:toggle": { enabled: boolean };
+  "team-colors:toggle": { enabled: boolean };
   "weather-override:toggle": { enabled: boolean };
   "weather-override:wind-change": { windStrength: number };
   "weather-override:degrees-change": { degrees: number };

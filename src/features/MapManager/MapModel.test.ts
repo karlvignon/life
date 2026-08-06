@@ -17,6 +17,13 @@ import {
   MUSHROOM_BIRTH_PATTERN,
 } from "./model/essences/MushroomEssence";
 import { createPattern } from "./model/patterns/PatternCatalog";
+import {
+  OTHER_TEST_PLAYER_ID,
+  OTHER_TEST_PROVENANCE,
+  placeTestCells,
+  setTestCellAlive,
+  TEST_PLAYER_ID,
+} from "./testFixtures";
 
 function weatherForCycle(cycle: number) {
   return Object.freeze({
@@ -36,11 +43,75 @@ describe("MapModel", () => {
   const essence = new GameOfLifeEssence();
 
   function place(model: MapModel, placeable: Placeable) {
-    return model.placeCells(placeable.getWorldCells(), placeable.getEssence());
+    return placeTestCells(
+      model,
+      placeable.getWorldCells(),
+      placeable.getEssence(),
+    );
   }
 
   afterEach(() => {
     gameCycle.reset();
+  });
+
+  it("records the owner of a player placement", () => {
+    const model = new MapModel(3, 3);
+
+    setTestCellAlive(model, 1, 1, essence);
+
+    expect(model.getTile(1, 1)?.getProvenance()).toEqual({
+      kind: "player-placement",
+      playerId: TEST_PLAYER_ID,
+    });
+  });
+
+  it("transfers ownership when another player places the same essence", () => {
+    const model = new MapModel(3, 3);
+    placeTestCells(model, [{ x: 1, y: 1 }], essence);
+
+    const changes = placeTestCells(
+      model,
+      [{ x: 1, y: 1 }],
+      essence,
+      OTHER_TEST_PROVENANCE,
+    );
+
+    expect(changes.changes).toEqual([{ x: 1, y: 1, alive: true, essence }]);
+    expect(model.getTile(1, 1)?.getProvenance()?.playerId).toBe(
+      OTHER_TEST_PLAYER_ID,
+    );
+  });
+
+  it("gives newborn cells the common owner of their parents", () => {
+    const model = new MapModel(5, 5);
+    place(
+      model,
+      Placeable.centerOnGrid(createPattern("blinker"), essence, 5, 5),
+    );
+
+    advanceStep(model);
+
+    expect(model.getTile(2, 1)?.getProvenance()).toEqual({
+      kind: "simulation-birth",
+      playerId: TEST_PLAYER_ID,
+    });
+    expect(model.getTile(2, 3)?.getProvenance()).toEqual({
+      kind: "simulation-birth",
+      playerId: TEST_PLAYER_ID,
+    });
+  });
+
+  it("uses player colors only when a render color resolver is provided", () => {
+    const model = new MapModel(3, 3);
+    placeTestCells(model, [{ x: 1, y: 1 }], essence);
+
+    const regularSnapshot = model.createRenderSnapshot(16);
+    const teamSnapshot = model.createRenderSnapshot(16, (playerId) =>
+      playerId === TEST_PLAYER_ID ? 0x3b82f6 : 0xef4444,
+    );
+
+    expect(regularSnapshot.livingCells[0].fillColor).toBe(essence.color);
+    expect(teamSnapshot.livingCells[0].fillColor).toBe(0x3b82f6);
   });
 
   it("oscillates a blinker over 2 generations", () => {
@@ -171,7 +242,7 @@ describe("MapModel", () => {
       { x: 5, y: 3 },
       { x: 4, y: 4 },
     ]) {
-      model.setCellAlive(x, y, essenceA);
+      setTestCellAlive(model, x, y, essenceA);
     }
 
     for (const { x, y } of [
@@ -179,7 +250,7 @@ describe("MapModel", () => {
       { x: 6, y: 4 },
       { x: 5, y: 5 },
     ]) {
-      model.setCellAlive(x, y, essenceB);
+      setTestCellAlive(model, x, y, essenceB);
     }
 
     advanceStep(model);
@@ -234,7 +305,8 @@ describe("MapModel", () => {
     const center = { x: 4, y: 4 };
 
     for (const offset of MUSHROOM_BIRTH_PATTERN) {
-      model.setCellAlive(
+      setTestCellAlive(
+        model,
         center.x + offset.x,
         center.y + offset.y,
         mushroomEssence,
@@ -281,8 +353,8 @@ describe("MapModel", () => {
 
     const weatherSensitiveEssence = new WeatherSensitiveEssence();
     const model = new MapModel(5, 5);
-    model.setCellAlive(1, 1, weatherSensitiveEssence);
-    model.setCellAlive(2, 2, weatherSensitiveEssence);
+    setTestCellAlive(model, 1, 1, weatherSensitiveEssence);
+    setTestCellAlive(model, 2, 2, weatherSensitiveEssence);
     model.getTile(1, 1)?.apply({ life: -30 });
 
     model.step(1, weatherForCycle(1));
@@ -300,8 +372,8 @@ describe("MapModel", () => {
 
     const sharedEssence = new WeatherSensitiveEssence();
     const model = new MapModel(5, 5);
-    model.setCellAlive(1, 1, sharedEssence);
-    model.setCellAlive(2, 2, sharedEssence);
+    setTestCellAlive(model, 1, 1, sharedEssence);
+    setTestCellAlive(model, 2, 2, sharedEssence);
     model.getTile(1, 1)?.apply({ life: -90 });
 
     model.step(1, weatherForCycle(1));
@@ -323,8 +395,8 @@ describe("MapModel", () => {
 
       const dyingEssence = new DyingEssence();
       const model = new MapModel(5, 5);
-      model.setCellAlive(1, 1, dyingEssence);
-      model.setCellAlive(2, 2, dyingEssence);
+      setTestCellAlive(model, 1, 1, dyingEssence);
+      setTestCellAlive(model, 2, 2, dyingEssence);
 
       const changes = model.step(1, weatherForCycle(1));
 
@@ -343,7 +415,7 @@ describe("MapModel", () => {
   it("loses 10 Mushroom life every 10 cold cycles", () => {
     const mushroomEssence = new MushroomEssence();
     const model = new MapModel(5, 5);
-    model.setCellAlive(2, 2, mushroomEssence);
+    setTestCellAlive(model, 2, 2, mushroomEssence);
 
     for (let cycle = 1; cycle <= 10; cycle++) {
       model.step(cycle, {
@@ -361,13 +433,13 @@ describe("MapModel", () => {
     const enemyEssence = new StaticEssence();
     const model = new MapModel(7, 7);
 
-    model.setCellAlive(3, 3, mushroomEssence);
+    setTestCellAlive(model, 3, 3, mushroomEssence);
     for (const { x, y } of [
       { x: 2, y: 2 },
       { x: 3, y: 2 },
       { x: 2, y: 3 },
     ]) {
-      model.setCellAlive(x, y, enemyEssence);
+      setTestCellAlive(model, x, y, enemyEssence);
     }
 
     for (let i = 0; i < 50; i++) {
@@ -397,7 +469,7 @@ describe("MapModel", () => {
 
   it("tracks living count without scanning the full grid", () => {
     const model = new MapModel(100, 100);
-    model.setCellAlive(50, 50, essence);
+    setTestCellAlive(model, 50, 50, essence);
 
     expect(model.getLivingCount()).toBe(1);
     expect(model.getLivingCells()).toHaveLength(1);
@@ -406,7 +478,8 @@ describe("MapModel", () => {
   it("stores independent life for cells sharing the same essence", () => {
     const sharedEssence = new StaticEssence();
     const model = new MapModel(5, 5);
-    model.placeCells(
+    placeTestCells(
+      model,
       [
         { x: 1, y: 1 },
         { x: 2, y: 2 },
@@ -424,13 +497,14 @@ describe("MapModel", () => {
 
   it("preserves each cell life when resizing the grid", () => {
     const model = new MapModel(5, 5);
-    model.setCellAlive(1, 1, new StaticEssence());
+    setTestCellAlive(model, 1, 1, new StaticEssence());
     model.getTile(1, 1)?.apply({ life: -40 });
 
     model.resize(8, 8);
 
     expect(model.getTile(1, 1)?.getData()?.getLife()).toBe(60);
     expect(model.getTile(1, 1)?.getData()?.getMaximumLife()).toBe(100);
+    expect(model.getTile(1, 1)?.getProvenance()?.playerId).toBe(TEST_PLAYER_ID);
   });
 
   it("rejects invalid cycle values", () => {

@@ -1,7 +1,18 @@
+import type { PlayerId } from "../../core/types/player";
 import type { Essence } from "./model/essences/Essence";
 import type { Pattern } from "./model/patterns/Pattern";
 import { Tile } from "./model/Tile";
 import type { TileDataProperties } from "./model/TileData";
+
+export type TileProvenance =
+  | {
+      readonly kind: "player-placement";
+      readonly playerId: PlayerId;
+    }
+  | {
+      readonly kind: "simulation-birth";
+      readonly playerId: PlayerId;
+    };
 
 export interface TileSnapshot {
   x: number;
@@ -9,6 +20,7 @@ export interface TileSnapshot {
   alive: boolean;
   essence: Essence | null;
   data: TileDataProperties | null;
+  provenance: TileProvenance | null;
 }
 
 export type HorizontalAlign = "start" | "center" | "end";

@@ -3,6 +3,7 @@ import { MapModel } from "./MapModel";
 import { Placeable } from "./model/Placeable";
 import { FloraEssence } from "./model/essences/FloraEssence";
 import { createPattern } from "./model/patterns/PatternCatalog";
+import { placeTestCells } from "./testFixtures";
 
 describe("encoded pattern integration", () => {
   it("places the flora ring whose empty center births next cycle", () => {
@@ -11,7 +12,7 @@ describe("encoded pattern integration", () => {
     const pattern = createPattern("flora-birth");
     const placeable = new Placeable(pattern, essence, 2, 2);
 
-    model.placeCells(placeable.getWorldCells(), essence);
+    placeTestCells(model, placeable.getWorldCells(), essence);
     expect(model.getTile(3, 3)?.isAlive()).toBe(false);
 
     model.step(1, {

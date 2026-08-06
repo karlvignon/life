@@ -1,6 +1,9 @@
 import { Application, Container } from "pixi.js";
 import type { EventBus } from "../../core/EventBus";
-import type { GameEventMap } from "../../core/types/gameEvents";
+import type {
+  GameEventMap,
+  GameSpeedSnapshot,
+} from "../../core/types/gameEvents";
 import { DevUIEventManager } from "./DevUIEventManager";
 import { DevUIModel } from "./DevUIModel";
 import { DevUIView } from "./DevUIView";
@@ -20,12 +23,15 @@ export class DevUIManager {
   private readonly eventManager = new DevUIEventManager();
   private readonly view = new DevUIView(this.eventManager);
   private readonly unsubscribeWeatherChanged: () => void;
+  private readonly unsubscribeSpeedChanged: () => void;
 
   constructor(
     app: Application,
     private readonly gameEventBus: EventBus,
+    initialSpeed: Readonly<GameSpeedSnapshot>,
   ) {
     this.app = app;
+    this.model.syncSpeed(initialSpeed);
     this.uiRoot = new Container();
     this.uiRoot.label = "devUiRoot";
     this.uiRoot.eventMode = "passive";
@@ -37,6 +43,12 @@ export class DevUIManager {
       GameEventMap["game:weather-changed"]
     >("game:weather-changed", (snapshot) => {
       this.model.syncWeather(snapshot);
+    });
+    this.unsubscribeSpeedChanged = this.gameEventBus.on<
+      GameEventMap["game:speed-changed"]
+    >("game:speed-changed", (snapshot) => {
+      this.model.syncSpeed(snapshot);
+      this.view.syncFromModel(this.model);
     });
   }
 
@@ -58,6 +70,7 @@ export class DevUIManager {
 
   destroy(): void {
     this.unsubscribeWeatherChanged();
+    this.unsubscribeSpeedChanged();
     this.eventManager.destroy();
     this.view.destroy();
     this.uiRoot.destroy({ children: true });
@@ -65,6 +78,14 @@ export class DevUIManager {
   }
 
   private bindEvents(): void {
+    this.eventManager.on("speed:change", ({ normalized }) => {
+      this.model.setSpeedFromNormalized(normalized);
+      this.view.syncFromModel(this.model);
+      this.gameEventBus.emit<GameEventMap["dev:speed-change-requested"]>(
+        "dev:speed-change-requested",
+        { speed: this.model.getSpeed() },
+      );
+    });
     this.eventManager.on("card-stamina-cost:toggle", ({ disabled }) => {
       this.model.setCardStaminaCostsDisabled(disabled);
       this.view.syncFromModel(this.model);
@@ -78,6 +99,14 @@ export class DevUIManager {
       this.view.syncFromModel(this.model);
       this.gameEventBus.emit<GameEventMap["dev:reproductibility-map-changed"]>(
         "dev:reproductibility-map-changed",
+        { enabled },
+      );
+    });
+    this.eventManager.on("team-colors:toggle", ({ enabled }) => {
+      this.model.setTeamColorsEnabled(enabled);
+      this.view.syncFromModel(this.model);
+      this.gameEventBus.emit<GameEventMap["dev:team-colors-changed"]>(
+        "dev:team-colors-changed",
         { enabled },
       );
     });

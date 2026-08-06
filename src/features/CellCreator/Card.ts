@@ -1,30 +1,33 @@
-import { createCardId, getCardDefinition } from "../../core/cards";
+import { createCardId } from "../../core/cards";
 import type { CardDefinition } from "../../core/types/cards";
 import type { Essence, Pattern } from "../MapManager/main";
-import type { CardId, EssenceId } from "./types";
+import type { CardId, EssenceFamilyId } from "./types";
 
-/** Choix plaçable associant explicitement un motif à son essence. */
+/** Carte résolue depuis une définition déclarative et les catalogues. */
 export class Card {
-  private readonly definition: CardDefinition;
-
   constructor(
+    private readonly definition: CardDefinition,
     readonly pattern: Pattern,
     readonly essence: Essence,
   ) {
-    const definition = getCardDefinition(essence.id, pattern.id);
-    if (!definition) {
-      throw new Error(`Unknown card combination: ${essence.id}:${pattern.id}`);
+    if (pattern.id !== definition.patternId) {
+      throw new Error(
+        `Card ${definition.familyId} expected pattern ${definition.patternId}, got ${pattern.id}`,
+      );
     }
-
-    this.definition = definition;
+    if (definition.essenceId && essence.id !== definition.essenceId) {
+      throw new Error(
+        `Card ${definition.familyId} expected essence ${definition.essenceId}, got ${essence.id}`,
+      );
+    }
   }
 
   get label(): string {
     return this.definition.label;
   }
 
-  get essenceId(): EssenceId {
-    return this.definition.essenceId;
+  get familyId(): EssenceFamilyId {
+    return this.definition.familyId;
   }
 
   get staminaCost(): number {
@@ -32,6 +35,6 @@ export class Card {
   }
 
   get id(): CardId {
-    return createCardId(this.definition.essenceId, this.definition.patternId);
+    return createCardId(this.definition.familyId, this.definition.patternId);
   }
 }

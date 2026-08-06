@@ -17,6 +17,8 @@ import {
   livingCellVisualState,
   type CellVisualState,
   type MapRenderSnapshot,
+  type ReproductibilityCellVisualState,
+  type ReproductibilityMapSnapshot,
 } from "./render/types";
 
 export class MapModel {
@@ -228,18 +230,37 @@ export class MapModel {
       throw new RangeError("weather cycle must match currentCycle");
     }
 
-    const living = this.registry.snapshot();
+    const living = this.registry.snapshot().map(({ index, essence }) => {
+      const x = index % this._gridWidth;
+      const y = Math.floor(index / this._gridWidth);
+      const reproducibility = this.getTile(x, y)
+        ?.getData()
+        ?.getReproducibility();
+
+      if (reproducibility === undefined) {
+        throw new Error(`Living cell ${index} has no reproducibility data`);
+      }
+
+      return { index, essence, reproducibility };
+    });
 
     if (living.length === 0) {
       return emptyChangeSet();
     }
 
-    const { nextLiving } = computeNextGeneration({
-      bounds: { width: this._gridWidth, height: this._gridHeight },
-      living,
-      currentCycle,
-      essenceOrder: this.registry.getEssenceOrder(),
-    });
+    const { nextLiving, reproductionCosts, newbornReproducibility } =
+      computeNextGeneration({
+        bounds: { width: this._gridWidth, height: this._gridHeight },
+        living,
+        currentCycle,
+        essenceOrder: this.registry.getEssenceOrder(),
+      });
+
+    for (const [index, cost] of reproductionCosts) {
+      const x = index % this._gridWidth;
+      const y = Math.floor(index / this._gridWidth);
+      this.getTile(x, y)?.apply({ reproducibility: -cost });
+    }
 
     const evolutionChanges = this.registry.applyNextLiving(
       nextLiving,
@@ -261,7 +282,17 @@ export class MapModel {
       }
 
       if (change.nextAlive && change.nextEssence) {
-        tile.setAlive(true, change.nextEssence);
+        const inheritedReproducibility = newbornReproducibility.get(
+          change.index,
+        );
+        const properties =
+          inheritedReproducibility === undefined
+            ? undefined
+            : {
+                ...change.nextEssence.getInitialProperties(),
+                reproducibility: inheritedReproducibility,
+              };
+        tile.setAlive(true, change.nextEssence, properties);
         this.applyBirthModifiers(change.x, change.y, change.nextEssence);
       } else {
         tile.setAlive(false);
@@ -349,6 +380,21 @@ export class MapModel {
       cellSize,
       livingCells,
     };
+  }
+
+  createReproductibilityMapSnapshot(): ReproductibilityMapSnapshot {
+    const livingCells: ReproductibilityCellVisualState[] = [];
+
+    this.registry.forEach((_index, _essence, x, y) => {
+      const score = this.getTile(x, y)?.getData()?.getReproducibility();
+      if (score === undefined) {
+        return;
+      }
+
+      livingCells.push({ x, y, score });
+    }, this._gridWidth);
+
+    return { livingCells };
   }
 
   cellChangesToVisualStates(changeSet: CellChangeSet): CellVisualState[] {

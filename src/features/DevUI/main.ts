@@ -73,6 +73,14 @@ export class DevUIManager {
         { disabled },
       );
     });
+    this.eventManager.on("reproductibility-map:toggle", ({ enabled }) => {
+      this.model.setReproductibilityMapEnabled(enabled);
+      this.view.syncFromModel(this.model);
+      this.gameEventBus.emit<GameEventMap["dev:reproductibility-map-changed"]>(
+        "dev:reproductibility-map-changed",
+        { enabled },
+      );
+    });
     this.eventManager.on("weather-override:toggle", ({ enabled }) => {
       this.model.setWeatherOverrideEnabled(enabled);
       this.view.syncFromModel(this.model);

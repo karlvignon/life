@@ -1,9 +1,13 @@
 import type { CellIndex, GridBounds } from "../../../../core/types/grid";
-import type { Essence } from "../essences/Essence";
+import type { Essence, EssenceBirth } from "../essences/Essence";
 
-export interface LivingCellEntry {
+export interface LivingCellReference {
   readonly index: CellIndex;
   readonly essence: Essence;
+}
+
+export interface LivingCellEntry extends LivingCellReference {
+  readonly reproducibility: number;
 }
 
 export interface EssenceGeneration {
@@ -11,6 +15,7 @@ export interface EssenceGeneration {
   readonly inputIndices: ReadonlySet<CellIndex>;
   readonly outputIndices: ReadonlyArray<CellIndex>;
   readonly outputSet: ReadonlySet<CellIndex>;
+  readonly births?: ReadonlyArray<EssenceBirth>;
 }
 
 export interface EvolutionInput {
@@ -22,4 +27,6 @@ export interface EvolutionInput {
 
 export interface EvolutionOutput {
   readonly nextLiving: ReadonlyMap<CellIndex, Essence>;
+  readonly reproductionCosts: ReadonlyMap<CellIndex, number>;
+  readonly newbornReproducibility: ReadonlyMap<CellIndex, number>;
 }

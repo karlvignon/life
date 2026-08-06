@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { FloraEssence, StaticEssence, TreeEssence } from "../MapManager/main";
+import {
+  FloraEssence,
+  MushroomSproutEssence,
+  StaticEssence,
+  TreeEssence,
+} from "../MapManager/main";
 import {
   DEFAULT_ESSENCE_DEFINITION,
   ESSENCE_DEFINITIONS,
@@ -83,6 +88,7 @@ describe("CellCreator cards", () => {
       "mushroom:cell",
       "mushroom:horizontal-line",
       "mushroom:mushroom-birth",
+      "mushroom:mushroom-sprout",
     ]);
     expect(cards[1]?.pattern.getCells()).toEqual([
       { x: 0, y: 0 },
@@ -95,6 +101,17 @@ describe("CellCreator cards", () => {
       { x: 2, y: 1 },
       { x: 1, y: 2 },
     ]);
+    expect(cards[3]?.pattern.getCells()).toEqual([
+      { x: 1, y: 1 },
+      { x: 1, y: 2 },
+    ]);
+    expect(cards[3]?.pattern.getBounds()).toEqual({ width: 3, height: 3 });
+    expect(cards[3]?.essence).toBeInstanceOf(MushroomSproutEssence);
+    expect(cards[3]?.essence.id).toBe("mushroom-sprout");
+    expect(cards[3]?.essence.getInitialProperties().reproducibility).toBe(7);
+    expect(cards[0]?.essence).toBe(cards[1]?.essence);
+    expect(cards[1]?.essence).toBe(cards[2]?.essence);
+    expect(cards[2]?.essence).not.toBe(cards[3]?.essence);
   });
 
   it("gives Tree its existing cards and its birth pattern", () => {
@@ -120,10 +137,10 @@ describe("CellCreator cards", () => {
     ]);
   });
 
-  it("associates every card with its catalog essence", () => {
+  it("associates every card with its catalog family", () => {
     for (const definition of ESSENCE_DEFINITIONS) {
       for (const card of getCardsForEssence(definition.id)) {
-        expect(card.essence).toBe(definition.essence);
+        expect(card.familyId).toBe(definition.id);
       }
     }
   });
@@ -133,6 +150,7 @@ describe("CellCreator cards", () => {
       expect(definition.essence.getInitialProperties()).toEqual({
         life: 100,
         maximumLife: 100,
+        reproducibility: 10,
       });
     }
   });

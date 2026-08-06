@@ -1,5 +1,5 @@
 import type { Essence } from "./model/essences/Essence";
-import type { Spaceship } from "./model/spaceships/Spaceship";
+import type { Pattern } from "./model/patterns/Pattern";
 import { Tile } from "./model/Tile";
 import type { TileDataProperties } from "./model/TileData";
 
@@ -40,10 +40,10 @@ export const DEFAULT_TILE_INFO_UI_LAYOUT: TileInfoUiLayoutConfig = {
 
 export interface MapConfig {
   cellSize?: number;
-  /** Essence appliquée au vaisseau initial. */
+  /** Essence appliquée au motif initial. */
   defaultEssence?: Essence;
-  /** Vaisseau initial placé au centre de la grille au premier layout. */
-  initialSpaceship?: Spaceship;
+  /** Motif initial placé au centre de la grille au premier layout. */
+  initialPattern?: Pattern;
   tileInfoLayout?: TileInfoUiLayoutConfig;
 }
 

@@ -1,17 +1,22 @@
 import type { Essence } from "../MapManager/main";
-import type { CardId, EssenceId } from "../../core/types/cards";
+import type { CardId, EssenceFamilyId } from "../../core/types/cards";
 
-export type { CardId, EssenceId, PatternId } from "../../core/types/cards";
+export type {
+  CardId,
+  EssenceFamilyId,
+  EssenceId,
+  PatternId,
+} from "../../core/types/cards";
 
 export interface EssenceDefinition {
-  id: EssenceId;
+  id: EssenceFamilyId;
   label: string;
   essence: Essence;
 }
 
 export type CellCreatorEventMap = {
   "card:select": { cardId: CardId };
-  "essence:select": { essenceId: EssenceId };
+  "essence:select": { essenceId: EssenceFamilyId };
   "map:clear": void;
 };
 

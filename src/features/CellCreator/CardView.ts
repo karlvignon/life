@@ -7,7 +7,7 @@ import {
 } from "pixi.js";
 import type { Card } from "./Card";
 import type { CellCreatorEventManager } from "./CellCreatorEventManager";
-import type { CardId, EssenceId } from "./types";
+import type { CardId, EssenceFamilyId } from "./types";
 
 const BUTTON_PADDING = 8;
 const BUTTON_BACKGROUND = 0x111827;
@@ -64,8 +64,8 @@ export class CardView extends Container {
     return this.card.id;
   }
 
-  getEssenceId(): EssenceId {
-    return this.card.essenceId;
+  getEssenceId(): EssenceFamilyId {
+    return this.card.familyId;
   }
 
   get width(): number {

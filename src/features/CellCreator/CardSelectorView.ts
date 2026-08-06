@@ -7,7 +7,7 @@ import {
   DEFAULT_CREATE_BUTTONS_UI_LAYOUT,
   type CardId,
   type CreateButtonsUiLayoutConfig,
-  type EssenceId,
+  type EssenceFamilyId,
   type ParentLayoutBounds,
 } from "./types";
 
@@ -33,7 +33,7 @@ export class CardSelectorView extends Container {
     this.addChild(...this.cardViews, this.clearButton);
   }
 
-  syncSelectedEssence(selectedEssenceId: EssenceId): void {
+  syncSelectedEssence(selectedEssenceId: EssenceFamilyId): void {
     for (const cardView of this.cardViews) {
       cardView.setAvailable(cardView.getEssenceId() === selectedEssenceId);
     }

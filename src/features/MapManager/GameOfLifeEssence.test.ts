@@ -55,6 +55,10 @@ describe("GameOfLifeEssence", () => {
       x: 2,
       y: 2,
     });
+    expect(result.births).toContainEqual({
+      index: 12,
+      parentIndices: expect.arrayContaining([6, 7, 11]),
+    });
   });
 
   it("ignores neighbors outside grid bounds", () => {

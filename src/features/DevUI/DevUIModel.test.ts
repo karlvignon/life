@@ -49,6 +49,14 @@ describe("DevUIModel", () => {
     expect(model.areCardStaminaCostsDisabled()).toBe(true);
   });
 
+  it("toggles the reproductibility map", () => {
+    const model = new DevUIModel();
+
+    expect(model.isReproductibilityMapEnabled()).toBe(false);
+    model.setReproductibilityMapEnabled(true);
+    expect(model.isReproductibilityMapEnabled()).toBe(true);
+  });
+
   it("tracks live weather while override is disabled", () => {
     const model = new DevUIModel();
 

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { getCardDefinition } from "../../core/cards";
 import {
   GameOfLifeEssence,
   HighLifeEssence,
-  SingleCellPattern,
+  MushroomSproutEssence,
+  createPattern,
 } from "../MapManager/main";
 import { Card } from "./Card";
 import { CellCreatorModel } from "./CellCreatorModel";
@@ -22,8 +24,16 @@ const highLifeDefinition: EssenceDefinition = {
   essence: highLifeEssence,
 };
 
-const conwayCellCard = new Card(new SingleCellPattern(), conwayEssence);
-const highLifeCellCard = new Card(new SingleCellPattern(), highLifeEssence);
+const conwayCellCard = new Card(
+  getCardDefinition("game-of-life", "cell")!,
+  createPattern("cell"),
+  conwayEssence,
+);
+const highLifeCellCard = new Card(
+  getCardDefinition("high-life", "cell")!,
+  createPattern("cell"),
+  highLifeEssence,
+);
 
 describe("CellCreatorModel", () => {
   it("starts with the provided essence and no selected pattern", () => {
@@ -42,6 +52,25 @@ describe("CellCreatorModel", () => {
     expect(model.getSelectedCardId()).toBe(conwayCellCard.id);
     expect(model.getSelectedCardStaminaCost()).toBe(conwayCellCard.staminaCost);
     expect(model.getSelectedPlaceable()?.getEssence()).toBe(conwayEssence);
+  });
+
+  it("selects a card-specific essence variant from the active catalog", () => {
+    const mushroomEssence = new MushroomSproutEssence();
+    const mushroomDefinition: EssenceDefinition = {
+      id: "mushroom",
+      label: "Mushroom",
+      essence: new MushroomSproutEssence(),
+    };
+    const card = new Card(
+      getCardDefinition("mushroom", "mushroom-sprout")!,
+      createPattern("mushroom-sprout"),
+      mushroomEssence,
+    );
+    const model = new CellCreatorModel(mushroomDefinition);
+
+    model.toggleSelectedCard(card);
+
+    expect(model.getSelectedPlaceable()?.getEssence()).toBe(mushroomEssence);
   });
 
   it("clears the selected card when the essence changes", () => {

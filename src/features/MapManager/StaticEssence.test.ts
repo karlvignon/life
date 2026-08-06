@@ -8,8 +8,7 @@ import {
 } from "./model/essences/StaticEssence";
 import { MapModel } from "./MapModel";
 import { Placeable } from "./model/Placeable";
-import { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
-import { SingleCellPattern } from "./model/patterns/SingleCellPattern";
+import { createPattern } from "./model/patterns/PatternCatalog";
 
 describe("StaticEssence", () => {
   const essence = new StaticEssence();
@@ -48,7 +47,7 @@ describe("StaticEssence", () => {
     const model = new MapModel(10, 10);
 
     const staticPlaceable = new Placeable(
-      new SingleCellPattern(),
+      createPattern("cell"),
       staticEssence,
       1,
       1,
@@ -58,7 +57,7 @@ describe("StaticEssence", () => {
       staticPlaceable.getEssence(),
     );
     const conwayPlaceable = new Placeable(
-      new BlinkerOscillator(),
+      createPattern("blinker"),
       conwayEssence,
       5,
       1,

@@ -1,67 +1,27 @@
 import type { CellIndex, GridBounds } from "../../../../core/types/grid";
 import { packIndex } from "../../../../core/types/grid";
-import {
-  countMooreNeighborsInSet,
-  forEachMooreNeighborIndex,
-} from "../../../../shared/grid/neighbors";
-import {
-  Essence,
-  type EssenceEvolutionInput,
-  type EssenceEvolutionResult,
-} from "./Essence";
+import { createLifeLikeBehavior } from "../evolution/behaviors/LifeLikeBehavior";
+import { Essence, type EssenceEvolutionInput } from "./Essence";
 
 export const DEFAULT_GAME_OF_LIFE_COLOR = 0x00ff88;
 
-/** Règles Conway B3/S23 — chaque groupe évolue indépendamment. */
+const CONWAY_EVOLUTION = createLifeLikeBehavior("conway-b3-s23", {
+  birthNeighborCounts: new Set([3]),
+  survivalNeighborCounts: new Set([2, 3]),
+});
+
+/** Configuration Conway B3/S23 composée avec le comportement LifeLike. */
 export class GameOfLifeEssence extends Essence {
-  readonly color: number;
-  readonly id: Essence["id"] = "game-of-life";
-  readonly name: string = "Conway";
-
   constructor(color: number = DEFAULT_GAME_OF_LIFE_COLOR) {
-    super();
-    this.color = color;
-  }
-
-  evolve(input: EssenceEvolutionInput): EssenceEvolutionResult {
-    const { bounds, aliveIndices } = input;
-    const candidates = new Set<CellIndex>();
-
-    for (const index of aliveIndices) {
-      candidates.add(index);
-      forEachMooreNeighborIndex(index, bounds, (neighborIndex) => {
-        candidates.add(neighborIndex);
-      });
-    }
-
-    const nextAlive: CellIndex[] = [];
-
-    for (const index of candidates) {
-      const neighbors = countMooreNeighborsInSet(index, aliveIndices, bounds);
-      const alive = aliveIndices.has(index);
-
-      const shouldLive = alive
-        ? this.shouldSurvive(neighbors)
-        : this.shouldBirth(neighbors);
-
-      if (shouldLive) {
-        nextAlive.push(index);
-      }
-    }
-
-    return { aliveIndices: nextAlive };
-  }
-
-  protected shouldSurvive(neighbors: number): boolean {
-    return neighbors === 2 || neighbors === 3;
-  }
-
-  protected shouldBirth(neighbors: number): boolean {
-    return neighbors === 3;
+    super({
+      id: "game-of-life",
+      name: "Conway",
+      color,
+      evolutionBehaviors: [CONWAY_EVOLUTION],
+    });
   }
 }
 
-/** Helper for tests — convert coordinates to evolution input. */
 export function makeGameOfLifeInput(
   bounds: GridBounds,
   alive: ReadonlyArray<{ x: number; y: number }>,
@@ -80,7 +40,6 @@ export function makeGameOfLifeInput(
   };
 }
 
-/** Helper for tests — unpack result indices to coordinates. */
 export function unpackAliveCells(
   indices: ReadonlyArray<CellIndex>,
   width: number,

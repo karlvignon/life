@@ -3,127 +3,134 @@ import type {
   CardId,
   CardPatternId,
   EssenceCatalogEntry,
-  EssenceId,
+  EssenceFamilyId,
   PatternId,
 } from "./types/cards";
 
 export const ESSENCE_DEFINITIONS: ReadonlyArray<EssenceCatalogEntry> = [
-  { id: "game-of-life", label: "Conway" },
-  { id: "high-life", label: "HighLife" },
-  { id: "static", label: "Static" },
-  { id: "mushroom", label: "Mushroom" },
-  { id: "flora", label: "Flora" },
-  { id: "tree", label: "Tree" },
+  { id: "game-of-life", label: "Conway", defaultEssenceId: "game-of-life" },
+  { id: "high-life", label: "HighLife", defaultEssenceId: "high-life" },
+  { id: "static", label: "Static", defaultEssenceId: "static" },
+  { id: "mushroom", label: "Mushroom", defaultEssenceId: "mushroom" },
+  { id: "flora", label: "Flora", defaultEssenceId: "flora" },
+  { id: "tree", label: "Tree", defaultEssenceId: "tree" },
 ];
 
 /** Catalogue métier exhaustif des combinaisons essence / motif plaçables. */
 export const CARD_DEFINITIONS: ReadonlyArray<CardDefinition> = [
   {
-    essenceId: "game-of-life",
+    familyId: "game-of-life",
     patternId: "genesis",
     label: "Genesis",
     staminaCost: 30,
   },
   {
-    essenceId: "game-of-life",
+    familyId: "game-of-life",
     patternId: "glider",
     label: "Glider",
     staminaCost: 50,
   },
   {
-    essenceId: "game-of-life",
+    familyId: "game-of-life",
     patternId: "lwss",
     label: "LWSS",
     staminaCost: 90,
   },
   {
-    essenceId: "game-of-life",
+    familyId: "game-of-life",
     patternId: "mwss",
     label: "MWSS",
     staminaCost: 30,
   },
   {
-    essenceId: "game-of-life",
+    familyId: "game-of-life",
     patternId: "blinker",
     label: "Blinker",
     staminaCost: 30,
   },
   {
-    essenceId: "game-of-life",
+    familyId: "game-of-life",
     patternId: "toad",
     label: "Toad",
     staminaCost: 60,
   },
   {
-    essenceId: "game-of-life",
+    familyId: "game-of-life",
     patternId: "replicator",
     label: "Replicator",
     staminaCost: 100,
   },
   {
-    essenceId: "game-of-life",
+    familyId: "game-of-life",
     patternId: "cell",
     label: "Cell",
     staminaCost: 10,
   },
   {
-    essenceId: "high-life",
+    familyId: "high-life",
     patternId: "genesis",
     label: "Genesis",
     staminaCost: 30,
   },
   {
-    essenceId: "high-life",
+    familyId: "high-life",
     patternId: "glider",
     label: "Glider",
     staminaCost: 50,
   },
-  { essenceId: "high-life", patternId: "lwss", label: "LWSS", staminaCost: 90 },
-  { essenceId: "high-life", patternId: "mwss", label: "MWSS", staminaCost: 30 },
+  { familyId: "high-life", patternId: "lwss", label: "LWSS", staminaCost: 90 },
+  { familyId: "high-life", patternId: "mwss", label: "MWSS", staminaCost: 30 },
   {
-    essenceId: "high-life",
+    familyId: "high-life",
     patternId: "blinker",
     label: "Blinker",
     staminaCost: 30,
   },
-  { essenceId: "high-life", patternId: "toad", label: "Toad", staminaCost: 6 },
+  { familyId: "high-life", patternId: "toad", label: "Toad", staminaCost: 6 },
   {
-    essenceId: "high-life",
+    familyId: "high-life",
     patternId: "replicator",
     label: "Replicator",
     staminaCost: 100,
   },
-  { essenceId: "high-life", patternId: "cell", label: "Cell", staminaCost: 1 },
-  { essenceId: "static", patternId: "cell", label: "Cell", staminaCost: 1 },
-  { essenceId: "mushroom", patternId: "cell", label: "Cell", staminaCost: 1 },
+  { familyId: "high-life", patternId: "cell", label: "Cell", staminaCost: 1 },
+  { familyId: "static", patternId: "cell", label: "Cell", staminaCost: 1 },
+  { familyId: "mushroom", patternId: "cell", label: "Cell", staminaCost: 1 },
   {
-    essenceId: "mushroom",
+    familyId: "mushroom",
     patternId: "horizontal-line",
     label: "Horizontal line",
     staminaCost: 30,
   },
   {
-    essenceId: "mushroom",
+    familyId: "mushroom",
     patternId: "mushroom-birth",
     label: "Birth pattern",
     staminaCost: 40,
   },
-  { essenceId: "flora", patternId: "cell", label: "Cell", staminaCost: 1 },
   {
-    essenceId: "flora",
+    familyId: "mushroom",
+    essenceId: "mushroom-sprout",
+    patternId: "mushroom-sprout",
+    label: "Sprout",
+    staminaCost: 20,
+  },
+  { familyId: "flora", patternId: "cell", label: "Cell", staminaCost: 1 },
+  {
+    familyId: "flora",
     patternId: "flora-birth",
     label: "Birth pattern",
     staminaCost: 80,
   },
-  { essenceId: "tree", patternId: "cell", label: "Cell", staminaCost: 1 },
+  { familyId: "tree", patternId: "cell", label: "Cell", staminaCost: 1 },
   {
-    essenceId: "tree",
+    familyId: "tree",
     patternId: "five-cell-cross",
     label: "5-cell cross",
     staminaCost: 50,
   },
   {
-    essenceId: "tree",
+    familyId: "tree",
     patternId: "tree-birth",
     label: "Birth pattern",
     staminaCost: 40,
@@ -131,18 +138,18 @@ export const CARD_DEFINITIONS: ReadonlyArray<CardDefinition> = [
 ];
 
 export function createCardId(
-  essenceId: EssenceId,
+  familyId: EssenceFamilyId,
   patternId: CardPatternId,
 ): CardId {
-  return `${essenceId}:${patternId}`;
+  return `${familyId}:${patternId}`;
 }
 
 export function getCardDefinition(
-  essenceId: EssenceId,
+  familyId: EssenceFamilyId,
   patternId: PatternId,
 ): CardDefinition | undefined {
   return CARD_DEFINITIONS.find(
     (definition) =>
-      definition.essenceId === essenceId && definition.patternId === patternId,
+      definition.familyId === familyId && definition.patternId === patternId,
   );
 }

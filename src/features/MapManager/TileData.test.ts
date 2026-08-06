@@ -5,19 +5,36 @@ import { TileData } from "./model/TileData";
 
 describe("TileData", () => {
   it("initializes every effective property from one shared input contract", () => {
-    const data = new TileData({ life: 80, maximumLife: 120 });
+    const data = new TileData({
+      life: 80,
+      maximumLife: 120,
+      reproducibility: 10,
+    });
 
     expect(data.getLife()).toBe(80);
     expect(data.getMaximumLife()).toBe(120);
-    expect(data.toProperties()).toEqual({ life: 80, maximumLife: 120 });
+    expect(data.getReproducibility()).toBe(10);
+    expect(data.toProperties()).toEqual({
+      life: 80,
+      maximumLife: 120,
+      reproducibility: 10,
+    });
   });
 
   it("applies independent deltas to effective properties", () => {
-    const data = new TileData({ life: 80, maximumLife: 120 });
+    const data = new TileData({
+      life: 80,
+      maximumLife: 120,
+      reproducibility: 10,
+    });
 
-    data.apply({ life: -10, maximumLife: 30 });
+    data.apply({ life: -10, maximumLife: 30, reproducibility: -2 });
 
-    expect(data.toProperties()).toEqual({ life: 70, maximumLife: 150 });
+    expect(data.toProperties()).toEqual({
+      life: 70,
+      maximumLife: 150,
+      reproducibility: 8,
+    });
   });
 
   it("creates independent data instances for tiles of the same essence", () => {
@@ -54,25 +71,47 @@ describe("TileData", () => {
       data: {
         life: 100,
         maximumLife: 100,
+        reproducibility: 10,
       },
     });
   });
 
   it("validates constructor values", () => {
-    expect(() => new TileData({ life: Number.NaN, maximumLife: 100 })).toThrow(
-      RangeError,
-    );
-    expect(() => new TileData({ life: 100, maximumLife: -1 })).toThrow(
-      RangeError,
-    );
+    expect(
+      () =>
+        new TileData({
+          life: Number.NaN,
+          maximumLife: 100,
+          reproducibility: 10,
+        }),
+    ).toThrow(RangeError);
+    expect(
+      () => new TileData({ life: 100, maximumLife: -1, reproducibility: 10 }),
+    ).toThrow(RangeError);
+    expect(
+      () =>
+        new TileData({
+          life: 100,
+          maximumLife: 100,
+          reproducibility: Number.NaN,
+        }),
+    ).toThrow(RangeError);
   });
 
   it("rejects invalid deltas without partially mutating its data", () => {
-    const data = new TileData({ life: 80, maximumLife: 100 });
+    const data = new TileData({
+      life: 80,
+      maximumLife: 100,
+      reproducibility: 10,
+    });
 
     expect(() => data.apply({ life: -10, maximumLife: -101 })).toThrow(
       RangeError,
     );
-    expect(data.toProperties()).toEqual({ life: 80, maximumLife: 100 });
+    expect(data.toProperties()).toEqual({
+      life: 80,
+      maximumLife: 100,
+      reproducibility: 10,
+    });
   });
 });

@@ -6,7 +6,11 @@ import {
   Text,
 } from "pixi.js";
 import type { CellCreatorEventManager } from "./CellCreatorEventManager";
-import type { EssenceDefinition, EssenceId, ParentLayoutBounds } from "./types";
+import type {
+  EssenceDefinition,
+  EssenceFamilyId,
+  ParentLayoutBounds,
+} from "./types";
 
 const PANEL_PADDING = 12;
 const PANEL_MARGIN = 12;
@@ -65,7 +69,7 @@ class EssenceButtonView extends Container {
     this.on("pointerdown", this.onPointerDown);
   }
 
-  getEssenceId(): EssenceId {
+  getEssenceId(): EssenceFamilyId {
     return this.definition.id;
   }
 
@@ -143,7 +147,7 @@ export class EssenceSelectorView extends Container {
     this.addChild(this.background, title, ...this.buttons);
   }
 
-  syncSelectedEssence(selectedId: EssenceId): void {
+  syncSelectedEssence(selectedId: EssenceFamilyId): void {
     for (const button of this.buttons) {
       button.setActive(button.getEssenceId() === selectedId);
     }

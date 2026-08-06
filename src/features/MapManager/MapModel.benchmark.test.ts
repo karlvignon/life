@@ -3,7 +3,7 @@ import { gameCycle } from "../../core/GameCycle";
 import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 import { MapModel } from "./MapModel";
 import { Placeable } from "./model/Placeable";
-import { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
+import { createPattern } from "./model/patterns/PatternCatalog";
 
 describe("MapModel performance baselines", () => {
   const essence = new GameOfLifeEssence();
@@ -30,7 +30,7 @@ describe("MapModel performance baselines", () => {
     const model = new MapModel(120, 67);
     place(
       model,
-      Placeable.centerOnGrid(new BlinkerOscillator(), essence, 120, 67),
+      Placeable.centerOnGrid(createPattern("blinker"), essence, 120, 67),
     );
 
     expect(model.getLivingCount()).toBe(3);
@@ -41,7 +41,7 @@ describe("MapModel performance baselines", () => {
     const model = new MapModel(120, 67);
     place(
       model,
-      Placeable.centerOnGrid(new BlinkerOscillator(), essence, 120, 67),
+      Placeable.centerOnGrid(createPattern("blinker"), essence, 120, 67),
     );
 
     let maxDelta = 0;

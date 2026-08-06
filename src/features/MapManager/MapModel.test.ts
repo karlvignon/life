@@ -11,14 +11,12 @@ import {
 import { StaticEssence } from "./model/essences/StaticEssence";
 import { MapModel } from "./MapModel";
 import { Placeable } from "./model/Placeable";
-import { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
-import { HighLifeReplicator } from "./model/patterns/HighLifeReplicator";
 import {
   MushroomEssence,
   DEFAULT_MUSHROOM_COLOR,
   MUSHROOM_BIRTH_PATTERN,
 } from "./model/essences/MushroomEssence";
-import { SingleCellPattern } from "./model/patterns/SingleCellPattern";
+import { createPattern } from "./model/patterns/PatternCatalog";
 
 function weatherForCycle(cycle: number) {
   return Object.freeze({
@@ -48,7 +46,7 @@ describe("MapModel", () => {
   it("oscillates a blinker over 2 generations", () => {
     const model = new MapModel(5, 5);
     const placeable = Placeable.centerOnGrid(
-      new BlinkerOscillator(),
+      createPattern("blinker"),
       essence,
       5,
       5,
@@ -84,7 +82,7 @@ describe("MapModel", () => {
     const model = new MapModel(5, 5);
     place(
       model,
-      Placeable.centerOnGrid(new BlinkerOscillator(), essence, 5, 5),
+      Placeable.centerOnGrid(createPattern("blinker"), essence, 5, 5),
     );
 
     const delta = advanceStep(model);
@@ -96,7 +94,7 @@ describe("MapModel", () => {
   it("assigns the triggering essence to born cells", () => {
     const model = new MapModel(5, 5);
     const placeable = Placeable.centerOnGrid(
-      new BlinkerOscillator(),
+      createPattern("blinker"),
       essence,
       5,
       5,
@@ -112,7 +110,7 @@ describe("MapModel", () => {
   it("preserves essence on resize", () => {
     const model = new MapModel(5, 5);
     const placeable = Placeable.centerOnGrid(
-      new BlinkerOscillator(),
+      createPattern("blinker"),
       essence,
       5,
       5,
@@ -131,8 +129,8 @@ describe("MapModel", () => {
     const essenceB = new GameOfLifeEssence();
 
     const model = new MapModel(10, 5);
-    place(model, new Placeable(new BlinkerOscillator(), essenceA, 1, 1));
-    place(model, new Placeable(new BlinkerOscillator(), essenceB, 6, 1));
+    place(model, new Placeable(createPattern("blinker"), essenceA, 1, 1));
+    place(model, new Placeable(createPattern("blinker"), essenceB, 6, 1));
 
     expect(model.getLivingCells()).toHaveLength(6);
 
@@ -153,7 +151,7 @@ describe("MapModel", () => {
     const essenceA = new GameOfLifeEssence();
 
     const model = new MapModel(5, 5);
-    place(model, new Placeable(new BlinkerOscillator(), essenceA, 1, 1));
+    place(model, new Placeable(createPattern("blinker"), essenceA, 1, 1));
 
     advanceStep(model);
 
@@ -195,7 +193,7 @@ describe("MapModel", () => {
     const highLifeEssence = new HighLifeEssence();
     const model = new MapModel(10, 10);
     const placeable = Placeable.centerOnGrid(
-      new HighLifeReplicator(),
+      createPattern("replicator"),
       highLifeEssence,
       10,
       10,
@@ -250,6 +248,27 @@ describe("MapModel", () => {
     expect(model.getTile(center.x, center.y)?.isAlive()).toBe(true);
     expect(model.getTile(center.x, center.y)?.getEssence()).toBe(
       mushroomEssence,
+    );
+    expect(
+      model.getTile(center.x, center.y)?.getData()?.getReproducibility(),
+    ).toBe(9);
+    for (const offset of MUSHROOM_BIRTH_PATTERN) {
+      expect(
+        model
+          .getTile(center.x + offset.x, center.y + offset.y)
+          ?.getData()
+          ?.getReproducibility(),
+      ).toBe(9);
+    }
+    expect(model.createReproductibilityMapSnapshot().livingCells).toEqual(
+      expect.arrayContaining([
+        { x: center.x, y: center.y, score: 9 },
+        ...MUSHROOM_BIRTH_PATTERN.map((offset) => ({
+          x: center.x + offset.x,
+          y: center.y + offset.y,
+          score: 9,
+        })),
+      ]),
     );
   });
 
@@ -362,7 +381,7 @@ describe("MapModel", () => {
     const mushroomEssence = new MushroomEssence();
     const model = new MapModel(5, 5);
     const placeable = Placeable.centerOnGrid(
-      new SingleCellPattern(),
+      createPattern("cell"),
       mushroomEssence,
       5,
       5,

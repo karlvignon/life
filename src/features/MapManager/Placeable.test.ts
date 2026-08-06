@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { Placeable } from "./model/Placeable";
 import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
 import { StaticEssence } from "./model/essences/StaticEssence";
-import { SingleCellPattern } from "./model/patterns/SingleCellPattern";
+import { createPattern } from "./model/patterns/PatternCatalog";
 
 describe("Placeable", () => {
   it("associates the same pure pattern with different essences", () => {
-    const pattern = new SingleCellPattern();
+    const pattern = createPattern("cell");
     const conway = new GameOfLifeEssence();
     const staticEssence = new StaticEssence();
 
@@ -20,7 +20,7 @@ describe("Placeable", () => {
   });
 
   it("preserves pattern and essence when moving the origin", () => {
-    const pattern = new SingleCellPattern();
+    const pattern = createPattern("cell");
     const essence = new StaticEssence();
     const moved = new Placeable(pattern, essence, 0, 0).withOrigin(5, 7);
 

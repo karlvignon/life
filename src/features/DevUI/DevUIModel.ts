@@ -12,6 +12,7 @@ export class DevUIModel {
   private renderTimeTotalMs = 0;
   private weatherOverrideEnabled = false;
   private cardStaminaCostsDisabled = false;
+  private reproductibilityMapEnabled = false;
   private windStrength = MIN_OVERRIDE_WIND_STRENGTH;
   private degrees = 0;
 
@@ -56,6 +57,14 @@ export class DevUIModel {
 
   areCardStaminaCostsDisabled(): boolean {
     return this.cardStaminaCostsDisabled;
+  }
+
+  setReproductibilityMapEnabled(enabled: boolean): void {
+    this.reproductibilityMapEnabled = enabled;
+  }
+
+  isReproductibilityMapEnabled(): boolean {
+    return this.reproductibilityMapEnabled;
   }
 
   syncWeather(snapshot: WeatherValues): void {

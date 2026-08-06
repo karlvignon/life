@@ -30,6 +30,10 @@ export class DevUIView extends Container {
   private readonly cardCostCheckbox = new Graphics();
   private readonly cardCostCheckmark = new Graphics();
   private readonly cardCostLabel: Text;
+  private readonly reproductibilityMapToggle = new Container();
+  private readonly reproductibilityMapCheckbox = new Graphics();
+  private readonly reproductibilityMapCheckmark = new Graphics();
+  private readonly reproductibilityMapLabel: Text;
   private model: DevUIModel | null = null;
 
   constructor(private readonly eventManager: DevUIEventManager) {
@@ -82,6 +86,14 @@ export class DevUIView extends Container {
         fontSize: 12,
       },
     });
+    this.reproductibilityMapLabel = new Text({
+      text: "Reproductibility scores",
+      style: {
+        fill: SECONDARY_TEXT_COLOR,
+        fontFamily: "monospace",
+        fontSize: 12,
+      },
+    });
 
     this.statsText.position.set(PANEL_PADDING, PANEL_PADDING);
     this.overrideLabel.position.set(CHECKBOX_SIZE + 7, 0);
@@ -96,6 +108,12 @@ export class DevUIView extends Container {
       this.cardCostCheckmark,
       this.cardCostLabel,
     );
+    this.reproductibilityMapLabel.position.set(CHECKBOX_SIZE + 7, 0);
+    this.reproductibilityMapToggle.addChild(
+      this.reproductibilityMapCheckbox,
+      this.reproductibilityMapCheckmark,
+      this.reproductibilityMapLabel,
+    );
     this.addChild(
       this.background,
       this.statsText,
@@ -107,6 +125,7 @@ export class DevUIView extends Container {
       this.gameplaySeparator,
       this.gameplayTitle,
       this.cardCostToggle,
+      this.reproductibilityMapToggle,
     );
     this.position.set(12, 12);
     this.bindEvents();
@@ -129,6 +148,7 @@ export class DevUIView extends Container {
     const enabled = model.isWeatherOverrideEnabled();
     this.drawCheckbox(enabled);
     this.drawCardCostCheckbox(model.areCardStaminaCostsDisabled());
+    this.drawReproductibilityMapCheckbox(model.isReproductibilityMapEnabled());
     this.windSlider.setState(
       model.getNormalizedWindStrength(),
       model.getWindStrength().toFixed(1),
@@ -162,11 +182,25 @@ export class DevUIView extends Container {
         x >= 0 && x <= CONTROL_WIDTH && y >= 0 && y <= CHECKBOX_SIZE,
     };
     this.cardCostToggle.on("pointerdown", this.onToggleCardCost);
+    this.reproductibilityMapToggle.eventMode = "static";
+    this.reproductibilityMapToggle.cursor = "pointer";
+    this.reproductibilityMapToggle.hitArea = {
+      contains: (x: number, y: number) =>
+        x >= 0 && x <= CONTROL_WIDTH && y >= 0 && y <= CHECKBOX_SIZE,
+    };
+    this.reproductibilityMapToggle.on(
+      "pointerdown",
+      this.onToggleReproductibilityMap,
+    );
   }
 
   private unbindEvents(): void {
     this.overrideToggle.off("pointerdown", this.onToggleOverride);
     this.cardCostToggle.off("pointerdown", this.onToggleCardCost);
+    this.reproductibilityMapToggle.off(
+      "pointerdown",
+      this.onToggleReproductibilityMap,
+    );
   }
 
   private readonly onToggleOverride = (): void => {
@@ -189,6 +223,16 @@ export class DevUIView extends Container {
     });
   };
 
+  private readonly onToggleReproductibilityMap = (): void => {
+    if (!this.model) {
+      return;
+    }
+
+    this.eventManager.emit("reproductibility-map:toggle", {
+      enabled: !this.model.isReproductibilityMapEnabled(),
+    });
+  };
+
   private layout(): void {
     const separatorY = this.statsText.y + this.statsText.height + 8;
     const titleY = separatorY + 8;
@@ -198,6 +242,7 @@ export class DevUIView extends Container {
     const gameplaySeparatorY = degreesY + this.degreesSlider.controlHeight + 8;
     const gameplayTitleY = gameplaySeparatorY + 8;
     const cardCostY = gameplayTitleY + this.gameplayTitle.height + 8;
+    const reproductibilityMapY = cardCostY + CHECKBOX_SIZE + 8;
 
     this.separator.clear();
     this.separator
@@ -213,6 +258,10 @@ export class DevUIView extends Container {
       .fill(PANEL_BORDER);
     this.gameplayTitle.position.set(PANEL_PADDING, gameplayTitleY);
     this.cardCostToggle.position.set(PANEL_PADDING, cardCostY);
+    this.reproductibilityMapToggle.position.set(
+      PANEL_PADDING,
+      reproductibilityMapY,
+    );
   }
 
   private drawCheckbox(enabled: boolean): void {
@@ -223,8 +272,17 @@ export class DevUIView extends Container {
     drawCheckbox(this.cardCostCheckbox, this.cardCostCheckmark, enabled);
   }
 
+  private drawReproductibilityMapCheckbox(enabled: boolean): void {
+    drawCheckbox(
+      this.reproductibilityMapCheckbox,
+      this.reproductibilityMapCheckmark,
+      enabled,
+    );
+  }
+
   private drawBackground(): void {
-    const height = this.cardCostToggle.y + CHECKBOX_SIZE + PANEL_PADDING;
+    const height =
+      this.reproductibilityMapToggle.y + CHECKBOX_SIZE + PANEL_PADDING;
 
     this.background.clear();
     this.background

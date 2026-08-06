@@ -10,14 +10,12 @@ import { ChunkRenderDebugView } from "./ChunkRenderDebugView";
 import { MapEventManager } from "./MapEventManager";
 import { MapModel } from "./MapModel";
 import { MapView } from "./MapView";
+import { ReproductibilityMapView } from "./ReproductibilityMapView";
 import { TileInfoView } from "./TileInfoView";
 import type { CellChangeSet } from "./model/CellChangeSet";
 import { Placeable } from "./model/Placeable";
 import { Tile } from "./model/Tile";
-import type { Essence } from "./model/essences/Essence";
 import { GameOfLifeEssence } from "./model/essences/GameOfLifeEssence";
-import { GenesisSpaceship } from "./model/spaceships/GenesisSpaceship";
-import { Spaceship } from "./model/spaceships/Spaceship";
 import {
   mergeRenderDeltas,
   type MapRenderDelta,
@@ -26,76 +24,93 @@ import {
 import { computeGridSize, DEFAULT_CELL_SIZE, type MapConfig } from "./types";
 
 export type { CellOffset } from "../../core/types/grid";
+export { ReproductibilityMapView } from "./ReproductibilityMapView";
 export { Placeable } from "./model/Placeable";
 export { Tile } from "./model/Tile";
 export {
   TileData,
   type TileDataDelta,
-  type TileDataProperties,
+  type TileDataProperties
 } from "./model/TileData";
 export {
   Essence,
+  type EssenceBirth,
+  type EssenceDefinition,
+  type EssenceEvolutionInput,
+  type EssenceEvolutionResult,
   type EssenceProperties,
   type EssencePropertiesDelta,
+  type EvolutionBehavior,
+  type EvolutionProposal,
+  type WeatherBehavior
 } from "./model/essences/Essence";
-export { createEssence } from "./model/essences/EssenceCatalog";
+export {
+  createEssence,
+  essenceCatalog,
+  EssenceCatalog,
+  type EssenceFactory
+} from "./model/essences/EssenceCatalog";
 export {
   DEFAULT_FLORA_COLOR,
   FLORA_BIRTH_PATTERN,
-  FloraEssence,
+  FloraEssence
 } from "./model/essences/FloraEssence";
 export {
   DEFAULT_GAME_OF_LIFE_COLOR,
-  GameOfLifeEssence,
+  GameOfLifeEssence
 } from "./model/essences/GameOfLifeEssence";
 export {
   DEFAULT_HIGHLIFE_COLOR,
-  HighLifeEssence,
+  HighLifeEssence
 } from "./model/essences/HighLifeEssence";
 export {
   DEFAULT_MUSHROOM_COLOR,
-  MUSHROOM_BIRTH_PATTERN,
-  MUSHROOM_COLD_THRESHOLD_DEGREES,
-  MUSHROOM_COLD_LIFE_LOSS,
-  MUSHROOM_WEATHER_REPERCUSSION_INTERVAL,
-  MushroomEssence,
+  MUSHROOM_BIRTH_PATTERN, MUSHROOM_COLD_LIFE_LOSS, MUSHROOM_COLD_THRESHOLD_DEGREES, MUSHROOM_WEATHER_REPERCUSSION_INTERVAL,
+  MushroomEssence
 } from "./model/essences/MushroomEssence";
 export {
-  PatternDuplicatorEssence,
-  type BirthPattern,
-} from "./model/essences/PatternDuplicatorEssence";
+  MUSHROOM_SPROUT_BIRTH_PATTERN,
+  MushroomSproutEssence
+} from "./model/essences/MushroomSproutEssence";
 export {
   DEFAULT_STATIC_COLOR,
-  StaticEssence,
+  StaticEssence
 } from "./model/essences/StaticEssence";
 export {
   DEFAULT_TREE_COLOR,
   TREE_BIRTH_PATTERN,
   TREE_NEIGHBOR_DEGREES_MODIFIER,
-  TreeEssence,
+  TreeEssence
 } from "./model/essences/TreeEssence";
+export {
+  createLifeLikeBehavior,
+  type LifeLikeRules
+} from "./model/evolution/behaviors/LifeLikeBehavior";
+export {
+  createPatternBirthBehavior,
+  freezeBirthPattern,
+  type BirthPattern
+} from "./model/evolution/behaviors/PatternBirthBehavior";
 export {
   Modifier,
   type ModifierAuthor,
   type ModifierDefinition,
   type ModifierMode,
-  type WeatherProperty,
+  type WeatherProperty
 } from "./model/modifiers/Modifier";
-export { BlinkerOscillator } from "./model/patterns/BlinkerOscillator";
-export { FiveCellCrossPattern } from "./model/patterns/FiveCellCrossPattern";
-export { HighLifeReplicator } from "./model/patterns/HighLifeReplicator";
-export { HorizontalLinePattern } from "./model/patterns/HorizontalLinePattern";
+export { EncodedPattern } from "./model/patterns/EncodedPattern";
 export { Pattern } from "./model/patterns/Pattern";
-export { PatternDuplicatorCardPattern } from "./model/patterns/PatternDuplicatorCardPattern";
-export { createPattern } from "./model/patterns/PatternCatalog";
-export { RlePattern } from "./model/patterns/RlePattern";
-export { SingleCellPattern } from "./model/patterns/SingleCellPattern";
-export { ToadOscillator } from "./model/patterns/ToadOscillator";
-export { GenesisSpaceship } from "./model/spaceships/GenesisSpaceship";
-export { GliderSpaceship } from "./model/spaceships/GliderSpaceship";
-export { LightweightSpaceship } from "./model/spaceships/LightweightSpaceship";
-export { MiddleweightSpaceship } from "./model/spaceships/MiddleweightSpaceship";
-export { Spaceship } from "./model/spaceships/Spaceship";
+export {
+  createPattern,
+  patternCatalog,
+  PatternCatalog,
+  type EncodedPatternDefinition
+} from "./model/patterns/PatternCatalog";
+export {
+  parsePatternEncoding,
+  type ParsedPatternEncoding,
+  type PatternEncoding
+} from "./model/patterns/PatternEncoding";
 export { DEFAULT_TILE_INFO_UI_LAYOUT } from "./types";
 export type { MapConfig, TileInfoUiLayoutConfig, TileSnapshot } from "./types";
 
@@ -104,11 +119,10 @@ export class MapManager {
   private readonly stage: Container;
   private readonly uiRoot: Container;
   private readonly cellSize: number;
-  private readonly initialSpaceship: Spaceship;
-  private readonly initialEssence: Essence;
   private readonly eventManager = new MapEventManager();
   private readonly chunkRenderDebugModel = new ChunkRenderDebugModel();
   private readonly chunkRenderDebugView: ChunkRenderDebugView;
+  private readonly reproductibilityMapView: ReproductibilityMapView;
 
   private model: MapModel | null = null;
   private mapView: MapView | null = null;
@@ -122,6 +136,8 @@ export class MapManager {
   private tileInfoDirty = false;
   private chunkRenderDebugEnabled = false;
   private chunkRenderDebugDirty = false;
+  private reproductibilityMapEnabled = false;
+  private reproductibilityMapDirty = false;
 
   private readonly onResize = (): void => {
     this.layout();
@@ -132,8 +148,8 @@ export class MapManager {
     this.stage = app.stage;
     this.cellSize = config.cellSize ?? DEFAULT_CELL_SIZE;
     this.chunkRenderDebugView = new ChunkRenderDebugView(this.cellSize);
+    this.reproductibilityMapView = new ReproductibilityMapView(this.cellSize);
     const defaultEssence = config.defaultEssence ?? new GameOfLifeEssence();
-    this.initialSpaceship = config.initialSpaceship ?? new GenesisSpaceship();
     this.initialEssence = defaultEssence;
 
     this.uiRoot = new Container();
@@ -168,6 +184,7 @@ export class MapManager {
 
     this.queueDelta(this.model.step(currentCycle, weather));
     this.tileInfoDirty = this.lastHoveredTile !== null;
+    this.reproductibilityMapDirty = this.reproductibilityMapEnabled;
   }
 
   render(): void {
@@ -197,6 +214,13 @@ export class MapManager {
       this.chunkRenderDebugDirty = false;
     }
 
+    if (this.reproductibilityMapEnabled && this.reproductibilityMapDirty) {
+      this.reproductibilityMapView.sync(
+        this.model.createReproductibilityMapSnapshot(),
+      );
+      this.reproductibilityMapDirty = false;
+    }
+
     if (this.tileInfoDirty) {
       this.tileInfoUi.setTile(this.lastHoveredTile);
       this.tileInfoDirty = false;
@@ -204,7 +228,12 @@ export class MapManager {
   }
 
   needsRender(): boolean {
-    return this.renderDirty || this.chunkRenderDebugDirty || this.tileInfoDirty;
+    return (
+      this.renderDirty ||
+      this.chunkRenderDebugDirty ||
+      this.reproductibilityMapDirty ||
+      this.tileInfoDirty
+    );
   }
 
   setChunkRenderDebugEnabled(enabled: boolean): void {
@@ -216,6 +245,19 @@ export class MapManager {
       this.chunkRenderDebugView.clear();
       this.chunkRenderDebugDirty = false;
     }
+  }
+
+  setReproductibilityMapEnabled(enabled: boolean): void {
+    this.reproductibilityMapEnabled = enabled;
+    this.reproductibilityMapView.visible = enabled;
+
+    if (enabled) {
+      this.reproductibilityMapDirty = true;
+      return;
+    }
+
+    this.reproductibilityMapView.clear();
+    this.reproductibilityMapDirty = false;
   }
 
   getModel(): MapModel | null {
@@ -273,6 +315,7 @@ export class MapManager {
     );
     this.queueDelta(changes);
     this.tileInfoDirty = this.lastHoveredTile !== null;
+    this.reproductibilityMapDirty = this.reproductibilityMapEnabled;
   }
 
   clearMap(): void {
@@ -283,6 +326,7 @@ export class MapManager {
     const changes = this.model.clearLivingCells();
     this.queueDelta(changes);
     this.tileInfoDirty = this.lastHoveredTile !== null;
+    this.reproductibilityMapDirty = this.reproductibilityMapEnabled;
   }
 
   destroy(): void {
@@ -290,6 +334,7 @@ export class MapManager {
     this.unbindMapPointerEvents();
     this.eventManager.destroy();
     this.chunkRenderDebugView.destroy();
+    this.reproductibilityMapView.destroy();
 
     if (this.mapView) {
       this.mapView.destroyGrid();
@@ -378,7 +423,9 @@ export class MapManager {
     if (!this.model) {
       this.model = new MapModel(gridWidth, gridHeight);
       this.mapView = new MapView(this.cellSize);
-      this.mapView.getOverlayLayer().addChild(this.chunkRenderDebugView);
+      this.mapView
+        .getOverlayLayer()
+        .addChild(this.reproductibilityMapView, this.chunkRenderDebugView);
       this.stage.addChild(this.mapView);
       this.bindMapPointerEvents();
     } else {
@@ -417,18 +464,6 @@ export class MapManager {
       return;
     }
 
-    const placeable = Placeable.centerOnGrid(
-      this.initialSpaceship,
-      this.initialEssence,
-      this.model.gridWidth,
-      this.model.gridHeight,
-    );
-    const changes = this.model.placeCells(
-      placeable.getWorldCells(),
-      placeable.getEssence(),
-    );
-    this.queueDelta(changes);
-
     this.seeded = true;
   }
 
@@ -457,6 +492,7 @@ export class MapManager {
     };
     this.pendingDelta = null;
     this.renderDirty = true;
+    this.reproductibilityMapDirty = this.reproductibilityMapEnabled;
   }
 
   private queueDelta(changeSet: CellChangeSet): void {

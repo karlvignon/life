@@ -1,17 +1,20 @@
-import { GameOfLifeEssence } from "./GameOfLifeEssence";
+import { createLifeLikeBehavior } from "../evolution/behaviors/LifeLikeBehavior";
+import { Essence } from "./Essence";
 
 export const DEFAULT_HIGHLIFE_COLOR = 0x3b82f6;
 
-/** Règles HighLife B36/S23 — chaque groupe évolue indépendamment. */
-export class HighLifeEssence extends GameOfLifeEssence {
-  override readonly id = "high-life";
-  readonly name: string = "HighLife";
+const HIGHLIFE_EVOLUTION = createLifeLikeBehavior("highlife-b36-s23", {
+  birthNeighborCounts: new Set([3, 6]),
+  survivalNeighborCounts: new Set([2, 3]),
+});
 
+export class HighLifeEssence extends Essence {
   constructor(color: number = DEFAULT_HIGHLIFE_COLOR) {
-    super(color);
-  }
-
-  protected shouldBirth(neighbors: number): boolean {
-    return neighbors === 3 || neighbors === 6;
+    super({
+      id: "high-life",
+      name: "HighLife",
+      color,
+      evolutionBehaviors: [HIGHLIFE_EVOLUTION],
+    });
   }
 }

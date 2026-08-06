@@ -10,6 +10,7 @@ import { DevUIManager, type DevOptions } from "../features/DevUI/main";
 import { SeasonManager, type SeasonConfig } from "../features/Season/main";
 import { WeatherManager, type WeatherConfig } from "../features/Weather/main";
 import { PlayerManager, type PlayerConfig } from "../features/Player/main";
+import type { GameEventMap } from "./types/gameEvents";
 
 export interface GameConfig {
   map?: MapConfig;
@@ -32,6 +33,7 @@ export class Game {
   private readonly seasonManager: SeasonManager;
   private readonly weatherManager: WeatherManager;
   private readonly playerManager: PlayerManager;
+  private readonly unsubscribeReproductibilityMapChanged: () => void;
 
   constructor(app: Application, config: GameConfig) {
     this.app = app;
@@ -42,6 +44,11 @@ export class Game {
     this.mapManager.setChunkRenderDebugEnabled(
       config.devOptions?.display.displayChunkRender ?? false,
     );
+    this.unsubscribeReproductibilityMapChanged = this.eventBus.on<
+      GameEventMap["dev:reproductibility-map-changed"]
+    >("dev:reproductibility-map-changed", ({ enabled }) => {
+      this.mapManager.setReproductibilityMapEnabled(enabled);
+    });
     this.gameOptionsManager = new GameOptionsManager(
       app,
       this.eventBus,
@@ -91,6 +98,7 @@ export class Game {
 
   destroy(): void {
     this.app.ticker.stop();
+    this.unsubscribeReproductibilityMapChanged();
     this.devUIManager?.destroy();
     this.seasonManager.destroy();
     this.weatherManager.destroy();

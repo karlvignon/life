@@ -1,41 +1,72 @@
 import type { CardPatternId } from "../../../../core/types/cards";
-import { GenesisSpaceship } from "../spaceships/GenesisSpaceship";
-import { GliderSpaceship } from "../spaceships/GliderSpaceship";
-import { LightweightSpaceship } from "../spaceships/LightweightSpaceship";
-import { MiddleweightSpaceship } from "../spaceships/MiddleweightSpaceship";
-import { FLORA_BIRTH_PATTERN } from "../essences/FloraEssence";
-import { MUSHROOM_BIRTH_PATTERN } from "../essences/MushroomEssence";
-import { TREE_BIRTH_PATTERN } from "../essences/TreeEssence";
-import { BlinkerOscillator } from "./BlinkerOscillator";
-import { FiveCellCrossPattern } from "./FiveCellCrossPattern";
-import { HighLifeReplicator } from "./HighLifeReplicator";
-import { HorizontalLinePattern } from "./HorizontalLinePattern";
+import { EncodedPattern } from "./EncodedPattern";
 import type { Pattern } from "./Pattern";
-import { PatternDuplicatorCardPattern } from "./PatternDuplicatorCardPattern";
-import { SingleCellPattern } from "./SingleCellPattern";
-import { ToadOscillator } from "./ToadOscillator";
+import {
+  parsePatternEncoding,
+  type ParsedPatternEncoding,
+  type PatternEncoding,
+} from "./PatternEncoding";
 
-type PatternFactory = () => Pattern;
+export interface EncodedPatternDefinition {
+  readonly id: CardPatternId;
+  readonly encoding: PatternEncoding;
+}
 
-const PATTERN_FACTORIES: Readonly<Record<CardPatternId, PatternFactory>> = {
-  genesis: () => new GenesisSpaceship(),
-  glider: () => new GliderSpaceship(),
-  lwss: () => new LightweightSpaceship(),
-  mwss: () => new MiddleweightSpaceship(),
-  blinker: () => new BlinkerOscillator(),
-  toad: () => new ToadOscillator(),
-  replicator: () => new HighLifeReplicator(),
-  cell: () => new SingleCellPattern(),
-  "horizontal-line": () => new HorizontalLinePattern(),
-  "five-cell-cross": () => new FiveCellCrossPattern(),
-  "mushroom-birth": () =>
-    new PatternDuplicatorCardPattern("mushroom-birth", MUSHROOM_BIRTH_PATTERN),
-  "flora-birth": () =>
-    new PatternDuplicatorCardPattern("flora-birth", FLORA_BIRTH_PATTERN),
-  "tree-birth": () =>
-    new PatternDuplicatorCardPattern("tree-birth", TREE_BIRTH_PATTERN),
-};
+export class PatternCatalog {
+  private readonly definitions: ReadonlyMap<
+    CardPatternId,
+    ParsedPatternEncoding
+  >;
+
+  constructor(entries: ReadonlyArray<EncodedPatternDefinition>) {
+    const definitions = new Map<CardPatternId, ParsedPatternEncoding>();
+    for (const { id, encoding } of entries) {
+      if (!id.trim() || definitions.has(id)) {
+        throw new RangeError(
+          "pattern catalog ids must be unique and non-empty",
+        );
+      }
+      definitions.set(id, parsePatternEncoding(encoding));
+    }
+    this.definitions = definitions;
+  }
+
+  create(id: CardPatternId): Pattern {
+    const definition = this.definitions.get(id);
+    if (!definition) {
+      throw new Error(`Unknown pattern: ${id}`);
+    }
+    return new EncodedPattern(id, definition);
+  }
+
+  has(id: CardPatternId): boolean {
+    return this.definitions.has(id);
+  }
+}
+
+export const patternCatalog = new PatternCatalog([
+  {
+    id: "genesis",
+    encoding: "x=6;y=5;cells=011111100001000001100010001000",
+  },
+  { id: "glider", encoding: "x=3;y=3;cells=010001111" },
+  { id: "lwss", encoding: "x=4;y=4;cells=1011011100000111" },
+  { id: "mwss", encoding: "x=5;y=5;cells=1011101000100110110010000" },
+  { id: "blinker", encoding: "x=3;y=1;cells=111" },
+  { id: "toad", encoding: "x=4;y=2;cells=01111110" },
+  {
+    id: "replicator",
+    encoding: "x=5;y=5;cells=0011101001100011001011100",
+  },
+  { id: "cell", encoding: "x=1;y=1;cells=1" },
+  { id: "horizontal-line", encoding: "x=3;y=1;cells=111" },
+  { id: "five-cell-cross", encoding: "x=3;y=3;cells=010111010" },
+  { id: "mushroom-birth", encoding: "x=3;y=3;cells=010101010" },
+  { id: "mushroom-sprout", encoding: "x=3;y=3;cells=000010010" },
+  { id: "flora-birth", encoding: "x=3;y=3;cells=111101111" },
+  { id: "tree-birth", encoding: "x=3;y=3;cells=101000101" },
+]);
 
 export function createPattern(patternId: CardPatternId): Pattern {
-  return PATTERN_FACTORIES[patternId]();
+  return patternCatalog.create(patternId);
 }

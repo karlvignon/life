@@ -21,6 +21,16 @@ export interface MapRenderSnapshot {
   readonly livingCells: ReadonlyArray<CellVisualState>;
 }
 
+export interface ReproductibilityCellVisualState {
+  readonly x: number;
+  readonly y: number;
+  readonly score: number;
+}
+
+export interface ReproductibilityMapSnapshot {
+  readonly livingCells: ReadonlyArray<ReproductibilityCellVisualState>;
+}
+
 export interface MapRenderDelta {
   readonly revision: number;
   readonly changedCells: ReadonlyArray<CellVisualState>;

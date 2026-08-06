@@ -21,7 +21,9 @@ describe("GenerationMerger", () => {
   }
 
   it("keeps survivor with original essence", () => {
-    const living: LivingCellEntry[] = [{ index: 5, essence: essenceA }];
+    const living: LivingCellEntry[] = [
+      { index: 5, essence: essenceA, reproducibility: 10 },
+    ];
     const merged = mergeGenerations(
       living,
       [generation(essenceA, [5], [5])],
@@ -32,7 +34,9 @@ describe("GenerationMerger", () => {
   });
 
   it("drops cells absent from output", () => {
-    const living: LivingCellEntry[] = [{ index: 5, essence: essenceA }];
+    const living: LivingCellEntry[] = [
+      { index: 5, essence: essenceA, reproducibility: 10 },
+    ];
     const merged = mergeGenerations(
       living,
       [generation(essenceA, [5], [])],
@@ -53,7 +57,9 @@ describe("GenerationMerger", () => {
   });
 
   it("survivor blocks concurrent birth", () => {
-    const living: LivingCellEntry[] = [{ index: 5, essence: essenceA }];
+    const living: LivingCellEntry[] = [
+      { index: 5, essence: essenceA, reproducibility: 10 },
+    ];
     const merged = mergeGenerations(
       living,
       [generation(essenceA, [5], [5]), generation(essenceB, [5], [5])],

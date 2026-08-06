@@ -1,7 +1,7 @@
 import type { CellIndex } from "../../../core/types/grid";
 import { unpackIndex } from "../../../core/types/grid";
 import type { Essence } from "./essences/Essence";
-import type { LivingCellEntry } from "./evolution/types";
+import type { LivingCellReference } from "./evolution/types";
 
 export class LivingCellRegistry {
   private readonly cells = new Map<CellIndex, Essence>();
@@ -35,8 +35,8 @@ export class LivingCellRegistry {
     this.essenceSeen.clear();
   }
 
-  snapshot(): LivingCellEntry[] {
-    const entries: LivingCellEntry[] = [];
+  snapshot(): LivingCellReference[] {
+    const entries: LivingCellReference[] = [];
 
     const sortedIndices = [...this.cells.keys()].sort((a, b) => a - b);
 

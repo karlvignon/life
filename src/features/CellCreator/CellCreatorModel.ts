@@ -31,10 +31,7 @@ export class CellCreatorModel {
   }
 
   toggleSelectedCard(card: Card): void {
-    if (
-      card.essenceId !== this.selectedEssence.id ||
-      card.essence !== this.selectedEssence.essence
-    ) {
+    if (card.familyId !== this.selectedEssence.id) {
       return;
     }
 

@@ -9,30 +9,28 @@ import {
 describe("card definitions", () => {
   it("owns the selectable essence references", () => {
     expect(ESSENCE_DEFINITIONS).toEqual([
-      { id: "game-of-life", label: "Conway" },
-      { id: "high-life", label: "HighLife" },
-      { id: "static", label: "Static" },
-      { id: "mushroom", label: "Mushroom" },
-      { id: "flora", label: "Flora" },
-      { id: "tree", label: "Tree" },
+      { id: "game-of-life", label: "Conway", defaultEssenceId: "game-of-life" },
+      { id: "high-life", label: "HighLife", defaultEssenceId: "high-life" },
+      { id: "static", label: "Static", defaultEssenceId: "static" },
+      { id: "mushroom", label: "Mushroom", defaultEssenceId: "mushroom" },
+      { id: "flora", label: "Flora", defaultEssenceId: "flora" },
+      { id: "tree", label: "Tree", defaultEssenceId: "tree" },
     ]);
   });
 
   it("declares every card combination exactly once", () => {
-    const ids = CARD_DEFINITIONS.map(({ essenceId, patternId }) =>
-      createCardId(essenceId, patternId),
+    const ids = CARD_DEFINITIONS.map(({ familyId, patternId }) =>
+      createCardId(familyId, patternId),
     );
 
-    expect(ids).toHaveLength(25);
+    expect(ids).toHaveLength(26);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("contains the complete essence catalogs", () => {
-    const idsFor = (
-      essenceId: (typeof CARD_DEFINITIONS)[number]["essenceId"],
-    ) =>
+    const idsFor = (familyId: (typeof CARD_DEFINITIONS)[number]["familyId"]) =>
       CARD_DEFINITIONS.filter(
-        (definition) => definition.essenceId === essenceId,
+        (definition) => definition.familyId === familyId,
       ).map(({ patternId }) => patternId);
 
     expect(idsFor("game-of-life")).toEqual([
@@ -51,6 +49,7 @@ describe("card definitions", () => {
       "cell",
       "horizontal-line",
       "mushroom-birth",
+      "mushroom-sprout",
     ]);
     expect(idsFor("flora")).toEqual(["cell", "flora-birth"]);
     expect(idsFor("tree")).toEqual(["cell", "five-cell-cross", "tree-birth"]);

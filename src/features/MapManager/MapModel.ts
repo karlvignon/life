@@ -1,6 +1,7 @@
 import { packIndex } from "../../core/types/grid";
 import type { WeatherSnapshot } from "../../core/types/weather";
 import type { PlayerId } from "../../core/types/player";
+import type { TeamId, TeamResolver } from "../../core/types/team";
 import type { Essence } from "./model/essences/Essence";
 import {
   emptyChangeSet,
@@ -33,7 +34,11 @@ export class MapModel {
   >();
   private renderRevision = 0;
 
-  constructor(gridWidth: number, gridHeight: number) {
+  constructor(
+    gridWidth: number,
+    gridHeight: number,
+    private readonly teamResolver?: TeamResolver,
+  ) {
     this._gridWidth = gridWidth;
     this._gridHeight = gridHeight;
     this.initGrid();
@@ -144,6 +149,10 @@ export class MapModel {
     essence: Essence,
     provenance: TileProvenance,
   ): CellChangeSet {
+    if (!this.canPlaceCells(cells, essence)) {
+      return emptyChangeSet();
+    }
+
     const changes: CellChange[] = [];
 
     for (const { x, y } of cells) {
@@ -182,6 +191,22 @@ export class MapModel {
     }
 
     return { changes };
+  }
+
+  canPlaceCells(
+    cells: ReadonlyArray<{ x: number; y: number }>,
+    essence: Essence,
+  ): boolean {
+    if (cells.length === 0) {
+      return false;
+    }
+
+    return cells.every(({ x, y }) => {
+      const tile = this.getTile(x, y);
+      return (
+        tile !== null && (!tile.isAlive() || tile.getEssence() === essence)
+      );
+    });
   }
 
   clearLivingCells(): CellChangeSet {
@@ -279,6 +304,7 @@ export class MapModel {
         essence,
         reproducibility,
         playerId: provenance.playerId,
+        teamId: this.resolveTeamId(provenance.playerId),
       };
     });
 
@@ -540,6 +566,10 @@ export class MapModel {
     }
 
     return resolvePlayerColor?.(provenance.playerId) ?? essence.color;
+  }
+
+  private resolveTeamId(playerId: PlayerId): TeamId {
+    return this.teamResolver?.getPlayerTeam(playerId)?.id ?? playerId;
   }
 
   private applyBirthModifiers(x: number, y: number, essence: Essence): void {

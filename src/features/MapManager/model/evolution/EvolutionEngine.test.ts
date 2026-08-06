@@ -8,6 +8,7 @@ describe("EvolutionEngine", () => {
   const essence = new GameOfLifeEssence();
   const bounds = { width: 5, height: 5 };
   const playerId = "player-1";
+  const teamId = "team-1";
 
   it("oscillates a horizontal blinker to vertical", () => {
     const living = [
@@ -16,18 +17,21 @@ describe("EvolutionEngine", () => {
         essence,
         reproducibility: 10,
         playerId,
+        teamId,
       },
       {
         index: packIndex(2, 2, bounds.width),
         essence,
         reproducibility: 10,
         playerId,
+        teamId,
       },
       {
         index: packIndex(3, 2, bounds.width),
         essence,
         reproducibility: 10,
         playerId,
+        teamId,
       },
     ];
 
@@ -81,12 +85,14 @@ describe("EvolutionEngine", () => {
           essence: firstEssence,
           reproducibility: 10,
           playerId,
+          teamId,
         },
         {
           index: packIndex(3, 3, bounds.width),
           essence: secondEssence,
           reproducibility: 10,
           playerId,
+          teamId,
         },
       ],
       currentCycle: 4,
@@ -141,12 +147,14 @@ describe("EvolutionEngine", () => {
             essence: essenceA,
             reproducibility: 10,
             playerId,
+            teamId,
           },
           {
             index: secondGroupIndex,
             essence: essenceB,
             reproducibility: 10,
             playerId,
+            teamId,
           },
         ],
         currentCycle: 1,
@@ -189,12 +197,14 @@ describe("EvolutionEngine", () => {
           essence: twoParentEssence,
           reproducibility: 2,
           playerId,
+          teamId,
         },
         {
           index: exhaustedParentIndex,
           essence: twoParentEssence,
           reproducibility: 0,
           playerId,
+          teamId,
         },
       ],
       currentCycle: 1,
@@ -206,12 +216,13 @@ describe("EvolutionEngine", () => {
     expect(output.newbornReproducibility.size).toBe(0);
   });
 
-  it("does not combine cells owned by different players for a birth", () => {
+  it("combines allied parents and assigns births to the main contributor", () => {
     const horizontal = [1, 2, 3].map((x, index) => ({
       index: packIndex(x, 2, bounds.width),
       essence,
       reproducibility: 10,
       playerId: index === 2 ? "player-2" : playerId,
+      teamId,
     }));
 
     const output = computeNextGeneration({
@@ -221,8 +232,8 @@ describe("EvolutionEngine", () => {
       essenceOrder: [essence],
     });
 
-    expect(output.nextLiving.size).toBe(0);
-    expect(output.newbornPlayerIds.size).toBe(0);
+    expect(output.nextLiving.size).toBe(3);
+    expect([...output.newbornPlayerIds.values()]).toEqual([playerId, playerId]);
   });
 
   it("rejects contested births before charging either player", () => {
@@ -254,12 +265,14 @@ describe("EvolutionEngine", () => {
           essence: contestedEssence,
           reproducibility: 10,
           playerId,
+          teamId,
         },
         {
           index: packIndex(4, 4, bounds.width),
           essence: contestedEssence,
           reproducibility: 10,
           playerId: "player-2",
+          teamId: "team-2",
         },
       ],
       currentCycle: 1,

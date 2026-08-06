@@ -12,20 +12,25 @@ import type {
 } from "../../essences/Essence";
 
 export type BirthPattern = ReadonlyArray<Readonly<CellOffset>>;
+export type PatternParentScope = "family" | "essence";
 
 export function createPatternBirthBehavior(
   id: string,
   pattern: BirthPattern,
+  parentScope: PatternParentScope = "family",
 ): EvolutionBehavior {
   const birthPattern = freezeBirthPattern(pattern);
 
   return Object.freeze({
     id,
     evaluate(input: EssenceEvolutionInput): EvolutionProposal {
-      const { aliveIndices, bounds, globalLivingIndices } = input;
+      const { aliveIndices, essenceIndices, bounds, globalLivingIndices } =
+        input;
+      const parentIndicesForPattern =
+        parentScope === "essence" ? essenceIndices : aliveIndices;
       const candidates = new Set<CellIndex>();
 
-      for (const aliveIndex of aliveIndices) {
+      for (const aliveIndex of parentIndicesForPattern) {
         const aliveCell = unpackIndex(aliveIndex, bounds.width);
 
         for (const offset of birthPattern) {
@@ -53,7 +58,7 @@ export function createPatternBirthBehavior(
           }
           const parentIndex = packIndex(parentX, parentY, bounds.width);
           parentIndices.push(parentIndex);
-          return aliveIndices.has(parentIndex);
+          return parentIndicesForPattern.has(parentIndex);
         });
         if (patternIsComplete) {
           births.push({ index: candidateIndex, parentIndices });

@@ -50,4 +50,74 @@ describe("Essence", () => {
         }),
     ).toThrow(RangeError);
   });
+
+  it("defaults its evolution family to its id", () => {
+    const essence = new Essence({
+      id: "default-family",
+      name: "Default family",
+      color: 0,
+    });
+
+    expect(essence.evolutionFamilyId).toBe("default-family");
+    expect(essence.evolutionPriority).toBe(0);
+  });
+
+  it("keeps same-cell behavior proposals separate and ordered", () => {
+    const essence = new Essence({
+      id: "ordered",
+      evolutionFamilyId: "family",
+      evolutionPriority: 2,
+      name: "Ordered",
+      color: 0,
+      evolutionBehaviors: [
+        {
+          id: "first",
+          evaluate: () => ({
+            births: [{ index: 7, parentIndices: [1] }],
+          }),
+        },
+        {
+          id: "second",
+          evaluate: () => ({
+            births: [{ index: 7, parentIndices: [2] }],
+          }),
+        },
+      ],
+    });
+
+    const result = essence.evolve({
+      bounds: { width: 5, height: 5 },
+      aliveIndices: new Set([1, 2]),
+      essenceIndices: new Set([1, 2]),
+      globalLivingIndices: new Set([1, 2]),
+      currentCycle: 1,
+    });
+
+    expect(result.births).toEqual([
+      { index: 7, parentIndices: [1] },
+      { index: 7, parentIndices: [2] },
+    ]);
+    expect(essence.evolutionPriority).toBe(2);
+  });
+
+  it("rejects invalid evolution orchestration metadata", () => {
+    expect(
+      () =>
+        new Essence({
+          id: "invalid-family",
+          evolutionFamilyId: " ",
+          name: "Invalid family",
+          color: 0,
+        }),
+    ).toThrow(RangeError);
+    expect(
+      () =>
+        new Essence({
+          id: "invalid-priority",
+          evolutionPriority: -1,
+          name: "Invalid priority",
+          color: 0,
+        }),
+    ).toThrow(RangeError);
+  });
 });

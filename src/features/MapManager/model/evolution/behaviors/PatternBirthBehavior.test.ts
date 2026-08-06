@@ -15,12 +15,17 @@ const diamondPattern: BirthPattern = [
   { x: 0, y: 1 },
 ];
 
-function createPatternEssence(pattern: BirthPattern): Essence {
+function createPatternEssence(
+  pattern: BirthPattern,
+  parentScope: "family" | "essence" = "family",
+): Essence {
   return new Essence({
     id: "test-pattern",
     name: "Test pattern",
     color: 0xffffff,
-    evolutionBehaviors: [createPatternBirthBehavior("test-birth", pattern)],
+    evolutionBehaviors: [
+      createPatternBirthBehavior("test-birth", pattern, parentScope),
+    ],
   });
 }
 
@@ -35,7 +40,13 @@ function makeInput(
   for (const { x, y } of otherCells) {
     globalLivingIndices.add(packIndex(x, y, bounds.width));
   }
-  return { bounds, aliveIndices, globalLivingIndices, currentCycle: 1 };
+  return {
+    bounds,
+    aliveIndices,
+    essenceIndices: aliveIndices,
+    globalLivingIndices,
+    currentCycle: 1,
+  };
 }
 
 describe("PatternBirthBehavior", () => {
@@ -60,6 +71,27 @@ describe("PatternBirthBehavior", () => {
         { x: 4, y: 3 },
       ]),
     );
+
+    expect(result.aliveIndices).not.toContain(packIndex(3, 3, bounds.width));
+  });
+
+  it("requires every parent to carry the essence being evaluated", () => {
+    const essenceIndices = new Set([
+      packIndex(3, 2, bounds.width),
+      packIndex(2, 3, bounds.width),
+      packIndex(4, 3, bounds.width),
+    ]);
+    const familyAliveIndices = new Set([
+      ...essenceIndices,
+      packIndex(3, 4, bounds.width),
+    ]);
+    const result = createPatternEssence(diamondPattern, "essence").evolve({
+      bounds,
+      aliveIndices: familyAliveIndices,
+      essenceIndices,
+      globalLivingIndices: familyAliveIndices,
+      currentCycle: 1,
+    });
 
     expect(result.aliveIndices).not.toContain(packIndex(3, 3, bounds.width));
   });

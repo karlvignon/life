@@ -42,6 +42,8 @@ export class MushroomEssence extends Essence {
   constructor(color: number = DEFAULT_MUSHROOM_COLOR) {
     super({
       id: "mushroom",
+      evolutionFamilyId: "mushroom",
+      evolutionPriority: 0,
       name: "Mushroom",
       color,
       evolutionBehaviors: [MUSHROOM_EVOLUTION],
@@ -69,5 +71,11 @@ export function makeMushroomInput(
     globalLivingIndices.add(packIndex(x, y, bounds.width));
   }
 
-  return { bounds, aliveIndices, globalLivingIndices, currentCycle };
+  return {
+    bounds,
+    aliveIndices,
+    essenceIndices: aliveIndices,
+    globalLivingIndices,
+    currentCycle,
+  };
 }

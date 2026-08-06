@@ -51,6 +51,10 @@ export class CellCreatorManager {
       return;
     }
 
+    if (!this.mapManager.canPlacePlaceable(placement)) {
+      return;
+    }
+
     if (
       !this.cardStaminaCostDisabled &&
       !this.placementActor.trySpendStamina(staminaCost)

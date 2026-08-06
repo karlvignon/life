@@ -21,6 +21,7 @@ const PARENT_MUSHROOM_EVOLUTION = createPatternBirthBehavior(
 const SPROUT_EVOLUTION = createPatternBirthBehavior(
   "mushroom-sprout-birth",
   MUSHROOM_SPROUT_BIRTH_PATTERN,
+  "essence",
 );
 
 /** Variante composée : météo Mushroom + deux comportements de naissance. */
@@ -28,6 +29,8 @@ export class MushroomSproutEssence extends Essence {
   constructor(color: number = DEFAULT_MUSHROOM_COLOR) {
     super({
       id: "mushroom-sprout",
+      evolutionFamilyId: "mushroom",
+      evolutionPriority: 1,
       name: "Mushroom sprout",
       color,
       initialProperties: {

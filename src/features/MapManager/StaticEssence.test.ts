@@ -28,6 +28,7 @@ describe("StaticEssence", () => {
     const input = {
       bounds,
       aliveIndices,
+      essenceIndices: aliveIndices,
       currentCycle: 1,
       globalLivingIndices: aliveIndices,
     };
@@ -36,6 +37,7 @@ describe("StaticEssence", () => {
     const second = essence.evolve({
       ...input,
       aliveIndices: new Set(first.aliveIndices),
+      essenceIndices: new Set(first.aliveIndices),
     });
 
     expect(first.aliveIndices).toEqual([packIndex(2, 2, bounds.width)]);

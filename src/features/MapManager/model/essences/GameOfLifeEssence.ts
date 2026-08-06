@@ -35,6 +35,7 @@ export function makeGameOfLifeInput(
     ...overrides,
     bounds,
     aliveIndices,
+    essenceIndices: overrides.essenceIndices ?? aliveIndices,
     globalLivingIndices: overrides.globalLivingIndices ?? aliveIndices,
     currentCycle: overrides.currentCycle ?? 1,
   };

@@ -16,7 +16,10 @@ import {
   DEFAULT_MUSHROOM_COLOR,
   MUSHROOM_BIRTH_PATTERN,
 } from "./model/essences/MushroomEssence";
+import { MushroomSproutEssence } from "./model/essences/MushroomSproutEssence";
 import { createPattern } from "./model/patterns/PatternCatalog";
+import { createLifeLikeBehavior } from "./model/evolution/behaviors/LifeLikeBehavior";
+import { Essence } from "./model/essences/Essence";
 import {
   OTHER_TEST_PLAYER_ID,
   OTHER_TEST_PROVENANCE,
@@ -80,6 +83,55 @@ describe("MapModel", () => {
     expect(model.getTile(1, 1)?.getProvenance()?.playerId).toBe(
       OTHER_TEST_PLAYER_ID,
     );
+  });
+
+  it("refuses to replace living cells with another essence", () => {
+    const model = new MapModel(3, 3);
+    const mushroom = new MushroomEssence();
+    const sprout = new MushroomSproutEssence();
+    placeTestCells(
+      model,
+      [
+        { x: 1, y: 1 },
+        { x: 1, y: 2 },
+      ],
+      mushroom,
+    );
+
+    const changes = placeTestCells(
+      model,
+      [
+        { x: 1, y: 1 },
+        { x: 1, y: 2 },
+      ],
+      sprout,
+      OTHER_TEST_PROVENANCE,
+    );
+
+    expect(changes.changes).toEqual([]);
+    expect(model.getTile(1, 1)?.getEssence()).toBe(mushroom);
+    expect(model.getTile(1, 2)?.getEssence()).toBe(mushroom);
+    expect(model.getTile(1, 1)?.getProvenance()?.playerId).toBe(TEST_PLAYER_ID);
+  });
+
+  it("rejects a whole pattern when only one cell conflicts", () => {
+    const model = new MapModel(3, 3);
+    const mushroom = new MushroomEssence();
+    const sprout = new MushroomSproutEssence();
+    setTestCellAlive(model, 1, 1, mushroom);
+
+    const changes = placeTestCells(
+      model,
+      [
+        { x: 1, y: 1 },
+        { x: 1, y: 2 },
+      ],
+      sprout,
+    );
+
+    expect(changes.changes).toEqual([]);
+    expect(model.getTile(1, 1)?.getEssence()).toBe(mushroom);
+    expect(model.getTile(1, 2)?.isAlive()).toBe(false);
   });
 
   it("gives newborn cells the common owner of their parents", () => {
@@ -196,8 +248,22 @@ describe("MapModel", () => {
   });
 
   it("evolves essence groups independently", () => {
-    const essenceA = new GameOfLifeEssence();
-    const essenceB = new GameOfLifeEssence();
+    const conway = createLifeLikeBehavior("conway", {
+      birthNeighborCounts: new Set([3]),
+      survivalNeighborCounts: new Set([2, 3]),
+    });
+    const essenceA = new Essence({
+      id: "independent-a",
+      name: "Independent A",
+      color: 0x111111,
+      evolutionBehaviors: [conway],
+    });
+    const essenceB = new Essence({
+      id: "independent-b",
+      name: "Independent B",
+      color: 0x222222,
+      evolutionBehaviors: [conway],
+    });
 
     const model = new MapModel(10, 5);
     place(model, new Placeable(createPattern("blinker"), essenceA, 1, 1));
@@ -231,7 +297,7 @@ describe("MapModel", () => {
     }
   });
 
-  it("resolves concurrent births with deterministic priority", () => {
+  it("counts allied cells from the same evolution family together", () => {
     const essenceA = new GameOfLifeEssence();
     const essenceB = new GameOfLifeEssence();
 
@@ -256,8 +322,9 @@ describe("MapModel", () => {
     advanceStep(model);
 
     const birthTarget = model.getTile(5, 4);
-    expect(birthTarget?.isAlive()).toBe(true);
-    expect(birthTarget?.getEssence()).toBe(essenceA);
+    // Les six voisines alliées sont évaluées ensemble : Conway ne fait pas
+    // naître une cellule avec six voisines.
+    expect(birthTarget?.isAlive()).toBe(false);
   });
 
   it("assigns HighLife essence and color to replicator cells", () => {

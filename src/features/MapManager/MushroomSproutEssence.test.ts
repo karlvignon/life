@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { MapModel } from "./MapModel";
 import { Placeable } from "./model/Placeable";
-import { MUSHROOM_BIRTH_PATTERN } from "./model/essences/MushroomEssence";
+import {
+  MUSHROOM_BIRTH_PATTERN,
+  MushroomEssence,
+} from "./model/essences/MushroomEssence";
 import {
   MUSHROOM_SPROUT_BIRTH_PATTERN,
   MushroomSproutEssence,
@@ -77,6 +80,23 @@ describe("MushroomSproutEssence", () => {
     );
   });
 
+  it("does not grow a sprout from two ordinary vertical mushrooms", () => {
+    const model = new MapModel(7, 7);
+    const mushroom = new MushroomEssence();
+    const sprout = new MushroomSproutEssence();
+    const birthTarget = { x: 2, y: 1 };
+
+    setTestCellAlive(model, birthTarget.x, birthTarget.y + 1, mushroom);
+    setTestCellAlive(model, birthTarget.x, birthTarget.y + 2, mushroom);
+    // La présence d'un sprout dans la même famille déclenche l'évaluation de
+    // ses comportements, mais ne doit pas servir de parent à distance.
+    setTestCellAlive(model, 5, 5, sprout);
+
+    model.step(1, WEATHER);
+
+    expect(model.getTile(birthTarget.x, birthTarget.y)?.isAlive()).toBe(false);
+  });
+
   it("stops the vertical propagation when its inherited score is exhausted", () => {
     const essence = new MushroomSproutEssence();
     const model = new MapModel(5, 16);
@@ -94,5 +114,40 @@ describe("MushroomSproutEssence", () => {
 
     expect(model.getTile(2, 4)?.getData()?.getReproducibility()).toBe(0);
     expect(model.getTile(2, 3)?.isAlive()).toBe(false);
+  });
+
+  it("prioritizes the allied Mushroom cross over the Sprout column", () => {
+    const teamResolver = {
+      getPlayerTeam: () => ({ id: "blue", label: "Blue", color: 0x0000ff }),
+    };
+    const model = new MapModel(5, 6, teamResolver);
+    const mushroom = new MushroomEssence();
+    const sprout = new MushroomSproutEssence();
+    const mushroomOwner = {
+      kind: "player-placement" as const,
+      playerId: "player-1",
+    };
+    const sproutOwner = {
+      kind: "player-placement" as const,
+      playerId: "player-2",
+    };
+
+    for (const { x, y } of [
+      { x: 2, y: 1 },
+      { x: 1, y: 2 },
+      { x: 3, y: 2 },
+    ]) {
+      model.setCellAlive(x, y, mushroom, mushroomOwner);
+    }
+    model.setCellAlive(2, 3, sprout, sproutOwner);
+    model.setCellAlive(2, 4, sprout, sproutOwner);
+
+    model.step(1, WEATHER);
+
+    const newborn = model.getTile(2, 2);
+    expect(newborn?.getEssence()).toBe(mushroom);
+    expect(newborn?.getProvenance()?.playerId).toBe("player-1");
+    expect(newborn?.getData()?.getReproducibility()).toBe(6);
+    expect(model.getTile(2, 4)?.getData()?.getReproducibility()).toBe(7);
   });
 });

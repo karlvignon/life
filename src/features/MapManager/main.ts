@@ -333,9 +333,18 @@ export class MapManager {
     return { x: gridX, y: gridY };
   }
 
-  placePlaceable(placeable: Placeable, playerId: PlayerId): void {
-    if (!this.model) {
-      return;
+  canPlacePlaceable(placeable: Placeable): boolean {
+    return (
+      this.model?.canPlaceCells(
+        placeable.getWorldCells(),
+        placeable.getEssence(),
+      ) ?? false
+    );
+  }
+
+  placePlaceable(placeable: Placeable, playerId: PlayerId): boolean {
+    if (!this.model || !this.canPlacePlaceable(placeable)) {
+      return false;
     }
 
     const changes = this.model.placeCells(
@@ -346,6 +355,7 @@ export class MapManager {
     this.queueDelta(changes);
     this.tileInfoDirty = this.lastHoveredTile !== null;
     this.reproductibilityMapDirty = this.reproductibilityMapEnabled;
+    return true;
   }
 
   clearMap(): void {
@@ -451,7 +461,7 @@ export class MapManager {
     );
 
     if (!this.model) {
-      this.model = new MapModel(gridWidth, gridHeight);
+      this.model = new MapModel(gridWidth, gridHeight, this.teamResolver);
       this.mapView = new MapView(this.cellSize);
       this.mapView
         .getOverlayLayer()

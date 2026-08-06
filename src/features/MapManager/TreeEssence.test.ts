@@ -29,6 +29,7 @@ describe("TreeEssence", () => {
       essence.evolve({
         bounds: { width: 5, height: 5 },
         aliveIndices,
+        essenceIndices: aliveIndices,
         currentCycle: 1,
         globalLivingIndices: aliveIndices,
       }).aliveIndices,

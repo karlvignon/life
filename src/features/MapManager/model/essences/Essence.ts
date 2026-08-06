@@ -10,7 +10,10 @@ import type { ModifierDefinition } from "../modifiers/Modifier";
 
 export interface EssenceEvolutionInput {
   readonly bounds: GridBounds;
+  /** Cellules alliées de la même famille, utilisées par les règles de voisinage. */
   readonly aliveIndices: ReadonlySet<CellIndex>;
+  /** Cellules portant exactement l'essence dont les comportements sont évalués. */
+  readonly essenceIndices: ReadonlySet<CellIndex>;
   readonly currentCycle: number;
   readonly globalLivingIndices: ReadonlySet<CellIndex>;
 }
@@ -50,6 +53,10 @@ export interface BirthModifierDefinition extends ModifierDefinition {
 
 export interface EssenceDefinition {
   readonly id: EssenceId;
+  /** Groupe de cellules compatibles pour les règles d'évolution. */
+  readonly evolutionFamilyId?: string;
+  /** Priorité entre essences d'une même famille ; la plus petite passe avant. */
+  readonly evolutionPriority?: number;
   readonly name: string;
   readonly color: number;
   readonly initialProperties?: Readonly<TileDataProperties>;
@@ -68,6 +75,8 @@ const DEFAULT_PROPERTIES: TileDataProperties = Object.freeze({
 /** Définition immuable d'une essence composée de comportements purs. */
 export class Essence {
   readonly id: EssenceId;
+  readonly evolutionFamilyId: string;
+  readonly evolutionPriority: number;
   readonly name: string;
   readonly color: number;
 
@@ -80,6 +89,8 @@ export class Essence {
   constructor(definition: EssenceDefinition) {
     validateDefinition(definition);
     this.id = definition.id;
+    this.evolutionFamilyId = definition.evolutionFamilyId ?? definition.id;
+    this.evolutionPriority = definition.evolutionPriority ?? 0;
     this.name = definition.name;
     this.color = definition.color;
     this.initialProperties = Object.freeze({
@@ -125,7 +136,7 @@ export class Essence {
 
   evolve(input: EssenceEvolutionInput): EssenceEvolutionResult {
     const aliveIndices = new Set(input.aliveIndices);
-    const birthsByIndex = new Map<CellIndex, EssenceBirth>();
+    const births: EssenceBirth[] = [];
 
     for (const behavior of this.evolutionBehaviors) {
       const proposal = behavior.evaluate(input);
@@ -140,27 +151,15 @@ export class Essence {
         }
 
         aliveIndices.add(birth.index);
-        const existing = birthsByIndex.get(birth.index);
-        birthsByIndex.set(
-          birth.index,
-          existing
-            ? {
-                index: birth.index,
-                parentIndices: [
-                  ...new Set([
-                    ...existing.parentIndices,
-                    ...birth.parentIndices,
-                  ]),
-                ],
-              }
-            : birth,
-        );
+        // Les propositions restent séparées et ordonnées. L'arbitre essaiera
+        // la suivante si une proposition prioritaire ne peut pas être payée.
+        births.push(birth);
       }
     }
 
     return {
       aliveIndices: [...aliveIndices],
-      births: [...birthsByIndex.values()],
+      births,
     };
   }
 }
@@ -183,6 +182,16 @@ function validateDefinition(definition: EssenceDefinition): void {
   }
   if (!definition.name.trim()) {
     throw new RangeError("essence name must not be empty");
+  }
+  const evolutionFamilyId = definition.evolutionFamilyId ?? definition.id;
+  if (!evolutionFamilyId.trim()) {
+    throw new RangeError("evolutionFamilyId must not be empty");
+  }
+  const evolutionPriority = definition.evolutionPriority ?? 0;
+  if (!Number.isSafeInteger(evolutionPriority) || evolutionPriority < 0) {
+    throw new RangeError(
+      "evolutionPriority must be a non-negative safe integer",
+    );
   }
   if (!Number.isSafeInteger(definition.color) || definition.color < 0) {
     throw new RangeError("essence color must be a non-negative safe integer");

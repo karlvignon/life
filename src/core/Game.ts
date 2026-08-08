@@ -19,6 +19,8 @@ import {
 } from "../features/Player/main";
 import { BLUE_TEAM_ID, RED_TEAM_ID, TeamManager } from "../features/Team/main";
 import type { GameEventMap } from "./types/gameEvents";
+import type { GameControlsConfig } from "./controls";
+import { ControlsModel } from "./ControlsModel";
 
 export interface GameConfig {
   map?: MapConfig;
@@ -27,12 +29,14 @@ export interface GameConfig {
   season?: SeasonConfig;
   gameData?: GameDataConfig;
   player?: PlayerConfig;
+  controls?: GameControlsConfig;
 }
 
 export class Game {
   readonly gameData: GameData;
   private readonly app: Application;
   private readonly eventBus = new EventBus();
+  private readonly controlsModel: ControlsModel;
   private readonly mapManager: MapManager;
   private readonly teamManager: TeamManager;
   private readonly gameOptionsManager: GameOptionsManager;
@@ -49,6 +53,7 @@ export class Game {
     this.app = app;
     this.gameData = new GameData(config.gameData);
     gameCycle.reset();
+    this.controlsModel = new ControlsModel(config.controls);
 
     const playerConfigs = createLocalPlayerConfigs(config.player);
     this.teamManager = new TeamManager();
@@ -95,6 +100,7 @@ export class Game {
       this.eventBus,
       this.mapManager,
       this.playerManager,
+      this.controlsModel,
     );
     this.cellCreatorManager.registerUiRootToIgnore(this.mapManager.getUiRoot());
     this.cellCreatorManager.registerUiRootToIgnore(

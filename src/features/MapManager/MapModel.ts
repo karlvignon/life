@@ -20,6 +20,7 @@ import { LivingCellRegistry } from "./model/LivingCellRegistry";
 import { Tile } from "./model/Tile";
 import { applyModifiers, Modifier } from "./model/modifiers/Modifier";
 import type { TileProvenance, TileSnapshot } from "./types";
+import type { PlaceableRotation } from "./model/Placeable";
 import {
   deadCellVisualState,
   livingCellVisualState,
@@ -107,6 +108,7 @@ export class MapModel {
     essence: Essence,
     provenance: TileProvenance,
     behaviors: ReadonlyArray<TileBehavior> = [],
+    rotation: PlaceableRotation = 0,
   ): CellChangeSet {
     const tile = this.getTile(x, y);
     if (!tile) {
@@ -122,7 +124,7 @@ export class MapModel {
       this.removeModifiersAuthoredBy(x, y, previousEssence);
     }
 
-    tile.makeAlive({ essence, provenance, behaviors });
+    tile.makeAlive({ essence, provenance, behaviors, rotation });
     this.registry.set(index, essence);
 
     const visualStateChanged =
@@ -157,6 +159,7 @@ export class MapModel {
     essence: Essence,
     provenance: TileProvenance,
     behaviors: ReadonlyArray<TileBehavior> = [],
+    rotation: PlaceableRotation = 0,
   ): CellChangeSet {
     if (!this.canPlaceCells(cells, essence)) {
       return emptyChangeSet();
@@ -179,7 +182,7 @@ export class MapModel {
         this.removeModifiersAuthoredBy(x, y, previousEssence);
       }
 
-      tile.makeAlive({ essence, provenance, behaviors });
+      tile.makeAlive({ essence, provenance, behaviors, rotation });
       this.registry.set(index, essence);
 
       const visualStateChanged =
@@ -245,6 +248,7 @@ export class MapModel {
     essence: Essence,
     playerId: PlayerId,
     behaviors: ReadonlyArray<TileBehavior> = [],
+    rotation: PlaceableRotation = 0,
   ): CellChangeSet {
     if (!this.canSeedCells(cells, essence, playerId, behaviors)) {
       return emptyChangeSet();
@@ -258,6 +262,7 @@ export class MapModel {
         playerId,
       },
       behaviors,
+      rotation,
     );
   }
 
@@ -307,6 +312,7 @@ export class MapModel {
         properties: cell.data,
         provenance: cell.provenance,
         behaviors: cell.behaviors,
+        rotation: cell.rotation,
       });
       this.registry.set(index, cell.essence);
       this.applyBirthModifiers(cell.x, cell.y, cell.essence);
@@ -358,6 +364,7 @@ export class MapModel {
         reproducibility,
         playerId: provenance.playerId,
         teamId: this.resolveTeamId(provenance.playerId),
+        rotation: tile?.getRotation() ?? 0,
       };
     });
 
@@ -370,6 +377,7 @@ export class MapModel {
       reproductionCosts,
       newbornReproducibility,
       newbornPlayerIds,
+      newbornRotations,
     } = computeNextGeneration({
       bounds: { width: this._gridWidth, height: this._gridHeight },
       living,
@@ -421,6 +429,7 @@ export class MapModel {
           essence: change.nextEssence,
           properties,
           provenance: { kind: "simulation-birth", playerId },
+          rotation: newbornRotations.get(change.index) ?? 0,
         });
         this.applyBirthModifiers(change.x, change.y, change.nextEssence);
       } else {
@@ -595,6 +604,7 @@ export class MapModel {
           properties: snapshot.data,
           provenance: snapshot.provenance,
           behaviors: snapshot.behaviors,
+          rotation: snapshot.rotation,
         });
         this.registry.set(index, snapshot.essence);
       }

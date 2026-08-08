@@ -28,4 +28,40 @@ describe("Placeable", () => {
     expect(moved.getEssence()).toBe(essence);
     expect(moved.getOrigin()).toEqual({ x: 5, y: 7 });
   });
+
+  it("rotates cells clockwise while keeping a top-left origin", () => {
+    const pattern = createPattern("glider");
+    const essence = new StaticEssence();
+    const placeable = new Placeable(pattern, essence, 10, 20);
+
+    expect(placeable.withRotation(90).getWorldCells()).toEqual(
+      pattern.getCells().map(({ x, y }) => ({
+        x: 10 + pattern.getBounds().height - 1 - y,
+        y: 20 + x,
+      })),
+    );
+    expect(placeable.withRotation(180).getWorldCells()).toEqual(
+      pattern.getCells().map(({ x, y }) => ({
+        x: 10 + pattern.getBounds().width - 1 - x,
+        y: 20 + pattern.getBounds().height - 1 - y,
+      })),
+    );
+    expect(placeable.withRotation(270).getWorldCells()).toEqual(
+      pattern.getCells().map(({ x, y }) => ({
+        x: 10 + y,
+        y: 20 + pattern.getBounds().width - 1 - x,
+      })),
+    );
+  });
+
+  it("preserves rotation when moving the origin", () => {
+    const pattern = createPattern("glider");
+    const essence = new StaticEssence();
+    const moved = new Placeable(pattern, essence, 0, 0)
+      .withRotation(90)
+      .withOrigin(5, 7);
+
+    expect(moved.getRotation()).toBe(90);
+    expect(moved.getOrigin()).toEqual({ x: 5, y: 7 });
+  });
 });

@@ -7,6 +7,7 @@ import {
   type TileDataProperties,
 } from "../TileData";
 import type { ModifierDefinition } from "../modifiers/Modifier";
+import type { PlaceableRotation } from "../Placeable";
 
 export interface EssenceEvolutionInput {
   readonly bounds: GridBounds;
@@ -16,11 +17,14 @@ export interface EssenceEvolutionInput {
   readonly essenceIndices: ReadonlySet<CellIndex>;
   readonly currentCycle: number;
   readonly globalLivingIndices: ReadonlySet<CellIndex>;
+  /** Rotation portée par chaque cellule du groupe évalué. */
+  readonly rotationsByIndex?: ReadonlyMap<CellIndex, PlaceableRotation>;
 }
 
 export interface EssenceBirth {
   readonly index: CellIndex;
   readonly parentIndices: ReadonlyArray<CellIndex>;
+  readonly rotation?: PlaceableRotation;
 }
 
 export interface EvolutionProposal {

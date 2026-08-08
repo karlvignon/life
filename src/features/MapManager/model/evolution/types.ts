@@ -2,6 +2,7 @@ import type { CellIndex, GridBounds } from "../../../../core/types/grid";
 import type { PlayerId } from "../../../../core/types/player";
 import type { TeamId } from "../../../../core/types/team";
 import type { Essence, EssenceBirth } from "../essences/Essence";
+import type { PlaceableRotation } from "../Placeable";
 
 export interface LivingCellReference {
   readonly index: CellIndex;
@@ -12,6 +13,7 @@ export interface LivingCellEntry extends LivingCellReference {
   readonly reproducibility: number;
   readonly playerId: PlayerId;
   readonly teamId: TeamId;
+  readonly rotation?: PlaceableRotation;
 }
 
 export interface EssenceGeneration {
@@ -29,6 +31,7 @@ export interface AcceptedBirth {
   readonly teamId: TeamId;
   readonly playerId: PlayerId;
   readonly parentIndices: ReadonlyArray<CellIndex>;
+  readonly rotation: PlaceableRotation;
 }
 
 export interface EvolutionInput {
@@ -43,4 +46,5 @@ export interface EvolutionOutput {
   readonly reproductionCosts: ReadonlyMap<CellIndex, number>;
   readonly newbornReproducibility: ReadonlyMap<CellIndex, number>;
   readonly newbornPlayerIds: ReadonlyMap<CellIndex, PlayerId>;
+  readonly newbornRotations: ReadonlyMap<CellIndex, PlaceableRotation>;
 }

@@ -3,6 +3,8 @@ import type { Card } from "./Card";
 import { CardView } from "./CardView";
 import type { CellCreatorEventManager } from "./CellCreatorEventManager";
 import { ClearButtonView } from "./ClearButtonView";
+import { RotationControlView } from "./RotationControlView";
+import type { PlaceableRotation } from "../MapManager/main";
 import {
   DEFAULT_CREATE_BUTTONS_UI_LAYOUT,
   type CardId,
@@ -13,24 +15,30 @@ import {
 
 export class CardSelectorView extends Container {
   private readonly cardViews: CardView[];
+  private readonly rotationControl: RotationControlView;
   private readonly clearButton: ClearButtonView;
   private readonly layoutConfig: CreateButtonsUiLayoutConfig;
 
   constructor(
     cards: ReadonlyArray<Card>,
     eventManager: CellCreatorEventManager,
+    rotationShortcutLabel: string,
     layoutConfig: CreateButtonsUiLayoutConfig = DEFAULT_CREATE_BUTTONS_UI_LAYOUT,
   ) {
     super();
 
     this.cardViews = cards.map((card) => new CardView(eventManager, card));
+    this.rotationControl = new RotationControlView(
+      eventManager,
+      rotationShortcutLabel,
+    );
     this.clearButton = new ClearButtonView(eventManager);
     this.layoutConfig = {
       ...DEFAULT_CREATE_BUTTONS_UI_LAYOUT,
       ...layoutConfig,
     };
 
-    this.addChild(...this.cardViews, this.clearButton);
+    this.addChild(...this.cardViews, this.rotationControl, this.clearButton);
   }
 
   syncSelectedEssence(selectedEssenceId: EssenceFamilyId): void {
@@ -45,11 +53,20 @@ export class CardSelectorView extends Container {
     }
   }
 
+  syncRotation(rotation: PlaceableRotation, enabled: boolean): void {
+    this.rotationControl.setState(rotation, enabled);
+  }
+
+  syncRotationShortcut(shortcutLabel: string): void {
+    this.rotationControl.setShortcutLabel(shortcutLabel);
+  }
+
   layoutWithinParent(bounds: ParentLayoutBounds): void {
     const gap = this.layoutConfig.buttonGap ?? 8;
     const marginBottom = this.layoutConfig.marginBottom ?? 12;
     const visibleButtons = [
       ...this.cardViews.filter((cardView) => cardView.visible),
+      this.rotationControl,
       this.clearButton,
     ];
 

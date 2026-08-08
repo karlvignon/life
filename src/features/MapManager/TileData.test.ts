@@ -84,6 +84,7 @@ describe("TileData", () => {
       },
       provenance: TEST_PROVENANCE,
       behaviors: [],
+      rotation: 0,
     });
   });
 

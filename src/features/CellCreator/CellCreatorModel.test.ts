@@ -140,6 +140,39 @@ describe("CellCreatorModel", () => {
     expect(model.getPreviewPlaceable()?.getBehaviors()).toEqual(behaviors);
     expect(model.createPlacement()?.getBehaviors()).toEqual(behaviors);
   });
+
+  it("stores the placement rotation and applies it to preview and placement", () => {
+    const model = new CellCreatorModel(conwayDefinition);
+    model.toggleSelectedCard(conwayCellCard);
+    model.setPreviewOrigin({ x: 2, y: 3 });
+
+    model.rotatePlacementClockwise();
+
+    expect(model.getPlacementRotation()).toBe(90);
+    expect(model.getPreviewPlaceable()?.getRotation()).toBe(90);
+    expect(model.createPlacement()?.getRotation()).toBe(90);
+  });
+
+  it("cycles clockwise through the four canonical rotations", () => {
+    const model = new CellCreatorModel(conwayDefinition);
+    model.toggleSelectedCard(conwayCellCard);
+
+    const rotations = [90, 180, 270, 0];
+    for (const rotation of rotations) {
+      model.rotatePlacementClockwise();
+      expect(model.getPlacementRotation()).toBe(rotation);
+    }
+  });
+
+  it("resets placement rotation when the card selection is cleared", () => {
+    const model = new CellCreatorModel(conwayDefinition);
+    model.toggleSelectedCard(conwayCellCard);
+    model.setPlacementRotation(270);
+
+    model.clearSelectedCard();
+
+    expect(model.getPlacementRotation()).toBe(0);
+  });
 });
 
 function createTestCard(

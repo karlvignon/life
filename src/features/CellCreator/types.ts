@@ -1,5 +1,6 @@
 import type { Essence } from "../MapManager/main";
 import type { CardId, EssenceFamilyId } from "../../core/types/cards";
+import { GAME_COMMANDS } from "../../core/controls";
 
 export type {
   CardId,
@@ -17,6 +18,7 @@ export interface EssenceDefinition {
 export type CellCreatorEventMap = {
   "card:select": { cardId: CardId };
   "essence:select": { essenceId: EssenceFamilyId };
+  [GAME_COMMANDS.rotatePlacementClockwise]: void;
   "map:clear": void;
 };
 

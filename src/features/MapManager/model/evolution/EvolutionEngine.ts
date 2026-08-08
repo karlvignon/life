@@ -42,12 +42,19 @@ export function computeNextGeneration(input: EvolutionInput): EvolutionOutput {
       birth.playerId,
     ]),
   );
+  const newbornRotations = new Map(
+    [...competition.acceptedBirths].map(([index, birth]) => [
+      index,
+      birth.rotation,
+    ]),
+  );
 
   return {
     nextLiving,
     reproductionCosts: competition.reproductionCosts,
     newbornReproducibility,
     newbornPlayerIds,
+    newbornRotations,
   };
 }
 
@@ -109,6 +116,9 @@ function computeFamilyTeamGenerations(
         essenceIndices: sourceIndices,
         globalLivingIndices,
         currentCycle,
+        rotationsByIndex: new Map(
+          group.entries.map(({ index, rotation }) => [index, rotation ?? 0]),
+        ),
       });
       const resultSet = new Set(result.aliveIndices);
       const survivingSourceIndices = [...sourceIndices].filter((index) =>

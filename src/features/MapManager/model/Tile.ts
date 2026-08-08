@@ -3,12 +3,14 @@ import { Modifier, type ModifierAuthor } from "./modifiers/Modifier";
 import { TileData, type TileDataProperties } from "./TileData";
 import type { TileProvenance, TileSnapshot } from "../types";
 import type { TileBehavior } from "./behaviors/TileBehavior";
+import type { PlaceableRotation } from "./Placeable";
 
 export interface LivingTileState {
   readonly essence: Essence;
   readonly properties?: TileDataProperties;
   readonly provenance: TileProvenance;
   readonly behaviors?: ReadonlyArray<TileBehavior>;
+  readonly rotation?: PlaceableRotation;
 }
 
 export class Tile {
@@ -17,6 +19,7 @@ export class Tile {
   private provenance: TileProvenance | null = null;
   private modifiers: Modifier[] = [];
   private behaviors: TileBehavior[] = [];
+  private rotation: PlaceableRotation = 0;
 
   constructor(
     public readonly x: number,
@@ -37,6 +40,10 @@ export class Tile {
 
   getProvenance(): TileProvenance | null {
     return this.provenance;
+  }
+
+  getRotation(): PlaceableRotation {
+    return this.rotation;
   }
 
   getModifiers(): ReadonlyArray<Modifier> {
@@ -129,6 +136,12 @@ export class Tile {
     } else if (shouldInitialize) {
       this.behaviors = [];
     }
+
+    if (state.rotation !== undefined) {
+      this.rotation = state.rotation;
+    } else if (shouldInitialize) {
+      this.rotation = 0;
+    }
   }
 
   kill(): void {
@@ -136,6 +149,7 @@ export class Tile {
     this.data = null;
     this.provenance = null;
     this.behaviors = [];
+    this.rotation = 0;
   }
 
   toSnapshot(): TileSnapshot {
@@ -147,6 +161,7 @@ export class Tile {
       data: this.data?.toProperties() ?? null,
       provenance: this.provenance,
       behaviors: [...this.behaviors],
+      rotation: this.rotation,
     };
   }
 }

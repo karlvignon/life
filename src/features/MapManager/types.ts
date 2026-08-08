@@ -4,6 +4,7 @@ import type { Pattern } from "./model/patterns/Pattern";
 import { Tile } from "./model/Tile";
 import type { TileDataProperties } from "./model/TileData";
 import type { TileBehavior } from "./model/behaviors/TileBehavior";
+import type { PlaceableRotation } from "./model/Placeable";
 
 export type TileProvenance =
   | {
@@ -23,6 +24,7 @@ export interface TileSnapshot {
   data: TileDataProperties | null;
   provenance: TileProvenance | null;
   behaviors: ReadonlyArray<TileBehavior>;
+  rotation: PlaceableRotation;
 }
 
 export type HorizontalAlign = "start" | "center" | "end";

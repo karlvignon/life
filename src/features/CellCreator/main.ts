@@ -7,6 +7,8 @@ import {
 import type { EventBus } from "../../core/EventBus";
 import type { GameEventMap } from "../../core/types/gameEvents";
 import type { PlacementActor } from "../../core/types/player";
+import { GAME_COMMANDS } from "../../core/controls";
+import { ControlsModel, type ControlsReader } from "../../core/ControlsModel";
 import type { MapManager } from "../MapManager/main";
 import { CardSelectorView } from "./CardSelectorView";
 import {
@@ -33,18 +35,41 @@ export class CellCreatorManager {
   private readonly essenceSelectorView: EssenceSelectorView;
   private readonly previewView = new PlaceablePreviewView();
   private readonly unsubscribeCardStaminaCostChanged: () => void;
-  private boundMapView: Container | null = null;
+  private readonly unsubscribeControlBindingChanged: () => void;
   private cardStaminaCostDisabled = false;
 
   private readonly onResize = (): void => {
     this.layout();
   };
 
-  private readonly onMapPointerDown = (event: FederatedPointerEvent): void => {
-    if (this.isPointerOnUi(event)) {
+  private readonly onKeyDown = (event: KeyboardEvent): void => {
+    if (
+      event.code !==
+        this.controls.getBinding(GAME_COMMANDS.rotatePlacementClockwise).code ||
+      event.repeat ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      this.isKeyboardInputTarget(event.target) ||
+      !this.model.getSelectedPlaceable()
+    ) {
       return;
     }
 
+    event.preventDefault();
+    this.rotatePlacementClockwise();
+  };
+
+  private readonly onMapPointerDown = (event: FederatedPointerEvent): void => {
+    if (
+      event.button !==
+        this.controls.getBinding(GAME_COMMANDS.placeSelectedCard).button ||
+      this.isPointerOnUi(event)
+    ) {
+      return;
+    }
+
+    this.updatePreviewOrigin(event.global.x, event.global.y);
     const placement = this.model.createPlacement();
     const staminaCost = this.model.getSelectedCardStaminaCost();
     if (!placement || staminaCost === null) {
@@ -78,6 +103,7 @@ export class CellCreatorManager {
     gameEventBus: EventBus,
     mapManager: MapManager,
     private readonly placementActor: PlacementActor,
+    private readonly controls: ControlsReader = new ControlsModel(),
   ) {
     this.app = app;
     this.gameEventBus = gameEventBus;
@@ -88,7 +114,11 @@ export class CellCreatorManager {
     this.app.stage.addChild(this.uiRoot);
     this.uiRootsToIgnore.push(this.uiRoot);
 
-    this.view = new CardSelectorView(CARDS, this.eventManager);
+    this.view = new CardSelectorView(
+      CARDS,
+      this.eventManager,
+      this.controls.getBinding(GAME_COMMANDS.rotatePlacementClockwise).label,
+    );
     this.essenceSelectorView = new EssenceSelectorView(
       ESSENCE_DEFINITIONS,
       this.eventManager,
@@ -102,9 +132,27 @@ export class CellCreatorManager {
     >("dev:card-stamina-cost-changed", ({ disabled }) => {
       this.cardStaminaCostDisabled = disabled;
     });
+    this.unsubscribeControlBindingChanged = this.controls.onBindingChanged(
+      ({ command }) => {
+        if (command !== GAME_COMMANDS.rotatePlacementClockwise) {
+          return;
+        }
+
+        this.view.syncRotationShortcut(
+          this.controls.getBinding(GAME_COMMANDS.rotatePlacementClockwise)
+            .label,
+        );
+        this.layout();
+      },
+    );
     this.layout();
 
     window.addEventListener("resize", this.onResize);
+    window.addEventListener("keydown", this.onKeyDown);
+    this.app.renderer.events.rootBoundary.dispatch.on(
+      "pointerdown",
+      this.onMapPointerDown,
+    );
   }
 
   registerUiRootToIgnore(root: Container): void {
@@ -127,8 +175,6 @@ export class CellCreatorManager {
       return;
     }
 
-    this.ensureMapViewEvents(mapView);
-
     if (!this.model.getSelectedPlaceable()) {
       if (this.previewView.parent) {
         overlay.removeChild(this.previewView);
@@ -150,8 +196,13 @@ export class CellCreatorManager {
 
   destroy(): void {
     window.removeEventListener("resize", this.onResize);
+    window.removeEventListener("keydown", this.onKeyDown);
+    this.app.renderer.events.rootBoundary.dispatch.off(
+      "pointerdown",
+      this.onMapPointerDown,
+    );
     this.unsubscribeCardStaminaCostChanged();
-    this.unbindMapViewEvents();
+    this.unsubscribeControlBindingChanged();
     this.eventManager.destroy();
 
     this.previewView.destroy();
@@ -187,32 +238,16 @@ export class CellCreatorManager {
       this.layout();
     });
 
+    this.eventManager.on(GAME_COMMANDS.rotatePlacementClockwise, () => {
+      this.rotatePlacementClockwise();
+    });
+
     this.eventManager.on("map:clear", () => {
       this.mapManager.clearMap();
       this.model.clearSelectedCard();
       this.publishSelectedPlaceable();
       this.syncSelectionViews();
     });
-  }
-
-  private ensureMapViewEvents(mapView: Container): void {
-    if (mapView === this.boundMapView) {
-      return;
-    }
-
-    this.unbindMapViewEvents();
-    this.boundMapView = mapView;
-    mapView.eventMode = "static";
-    mapView.on("pointerdown", this.onMapPointerDown);
-  }
-
-  private unbindMapViewEvents(): void {
-    if (!this.boundMapView) {
-      return;
-    }
-
-    this.boundMapView.off("pointerdown", this.onMapPointerDown);
-    this.boundMapView = null;
   }
 
   private publishSelectedPlaceable(): void {
@@ -225,8 +260,32 @@ export class CellCreatorManager {
   private syncSelectionViews(): void {
     this.view.syncSelectedEssence(this.model.getSelectedEssenceDefinition().id);
     this.view.syncSelectedCard(this.model.getSelectedCardId());
+    this.view.syncRotation(
+      this.model.getPlacementRotation(),
+      this.model.getSelectedPlaceable() !== null,
+    );
     this.essenceSelectorView.syncSelectedEssence(
       this.model.getSelectedEssenceDefinition().id,
+    );
+  }
+
+  private rotatePlacementClockwise(): void {
+    if (!this.model.getSelectedPlaceable()) {
+      return;
+    }
+
+    this.model.rotatePlacementClockwise();
+    this.publishSelectedPlaceable();
+    this.syncSelectionViews();
+  }
+
+  private isKeyboardInputTarget(target: EventTarget | null): boolean {
+    return (
+      target instanceof HTMLElement &&
+      (target.isContentEditable ||
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement)
     );
   }
 

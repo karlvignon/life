@@ -10,6 +10,7 @@ import type {
   EvolutionBehavior,
   EvolutionProposal,
 } from "../../essences/Essence";
+import type { PlaceableRotation } from "../../Placeable";
 
 export type BirthPattern = ReadonlyArray<Readonly<CellOffset>>;
 export type PatternParentScope = "family" | "essence";
@@ -28,46 +29,79 @@ export function createPatternBirthBehavior(
         input;
       const parentIndicesForPattern =
         parentScope === "essence" ? essenceIndices : aliveIndices;
-      const candidates = new Set<CellIndex>();
+      const candidateRotations = new Map<CellIndex, Set<PlaceableRotation>>();
 
       for (const aliveIndex of parentIndicesForPattern) {
         const aliveCell = unpackIndex(aliveIndex, bounds.width);
+        const rotation = input.rotationsByIndex?.get(aliveIndex) ?? 0;
 
         for (const offset of birthPattern) {
-          const candidateX = aliveCell.x - offset.x;
-          const candidateY = aliveCell.y - offset.y;
+          const rotatedOffset = rotateOffset(offset, rotation);
+          const candidateX = aliveCell.x - rotatedOffset.x;
+          const candidateY = aliveCell.y - rotatedOffset.y;
           if (isInBounds(candidateX, candidateY, bounds)) {
-            candidates.add(packIndex(candidateX, candidateY, bounds.width));
+            const candidateIndex = packIndex(
+              candidateX,
+              candidateY,
+              bounds.width,
+            );
+            const rotations =
+              candidateRotations.get(candidateIndex) ?? new Set();
+            rotations.add(rotation);
+            candidateRotations.set(candidateIndex, rotations);
           }
         }
       }
 
       const births = [];
-      for (const candidateIndex of candidates) {
+      for (const [candidateIndex, rotations] of candidateRotations) {
         if (globalLivingIndices.has(candidateIndex)) {
           continue;
         }
 
         const candidate = unpackIndex(candidateIndex, bounds.width);
-        const parentIndices: CellIndex[] = [];
-        const patternIsComplete = birthPattern.every((offset) => {
-          const parentX = candidate.x + offset.x;
-          const parentY = candidate.y + offset.y;
-          if (!isInBounds(parentX, parentY, bounds)) {
-            return false;
+        for (const rotation of rotations) {
+          const parentIndices: CellIndex[] = [];
+          const patternIsComplete = birthPattern.every((offset) => {
+            const rotatedOffset = rotateOffset(offset, rotation);
+            const parentX = candidate.x + rotatedOffset.x;
+            const parentY = candidate.y + rotatedOffset.y;
+            if (!isInBounds(parentX, parentY, bounds)) {
+              return false;
+            }
+            const parentIndex = packIndex(parentX, parentY, bounds.width);
+            parentIndices.push(parentIndex);
+            return (
+              parentIndicesForPattern.has(parentIndex) &&
+              (input.rotationsByIndex?.get(parentIndex) ?? 0) === rotation
+            );
+          });
+          if (patternIsComplete) {
+            births.push({ index: candidateIndex, parentIndices, rotation });
+            break;
           }
-          const parentIndex = packIndex(parentX, parentY, bounds.width);
-          parentIndices.push(parentIndex);
-          return parentIndicesForPattern.has(parentIndex);
-        });
-        if (patternIsComplete) {
-          births.push({ index: candidateIndex, parentIndices });
         }
       }
 
       return { births };
     },
   });
+}
+
+function rotateOffset(
+  offset: CellOffset,
+  rotation: PlaceableRotation,
+): CellOffset {
+  switch (rotation) {
+    case 90:
+      return { x: -offset.y, y: offset.x };
+    case 180:
+      return { x: -offset.x, y: -offset.y };
+    case 270:
+      return { x: offset.y, y: -offset.x };
+    default:
+      return offset;
+  }
 }
 
 export function freezeBirthPattern(pattern: BirthPattern): BirthPattern {

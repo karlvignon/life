@@ -86,6 +86,7 @@ export function resolveBirthCompetition(
       teamId: winner.generation.teamId,
       playerId,
       parentIndices,
+      rotation: winner.birth.rotation ?? 0,
     });
   }
 

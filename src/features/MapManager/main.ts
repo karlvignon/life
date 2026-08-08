@@ -34,6 +34,7 @@ export type { CellOffset } from "../../core/types/grid";
 export { ReproductibilityMapView } from "./ReproductibilityMapView";
 export { SeedRangeMapView } from "./SeedRangeMapView";
 export { Placeable } from "./model/Placeable";
+export type { PlaceableRotation } from "./model/Placeable";
 export { Tile } from "./model/Tile";
 export {
   TileData,
@@ -410,6 +411,7 @@ export class MapManager {
       placeable.getEssence(),
       playerId,
       placeable.getBehaviors(),
+      placeable.getRotation(),
     );
     this.queueDelta(changes);
     this.tileInfoDirty = this.lastHoveredTile !== null;

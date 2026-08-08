@@ -53,6 +53,32 @@ describe("MushroomSproutEssence", () => {
     expect(model.getTile(2, 3)?.getData()?.getReproducibility()).toBe(6);
   });
 
+  it("rotates the birth pattern with its placed tiles", () => {
+    const essence = new MushroomSproutEssence();
+    const model = new MapModel(6, 5);
+    const placeable = new Placeable(
+      createPattern("mushroom-sprout"),
+      essence,
+      1,
+      1,
+    ).withRotation(90);
+
+    placeTestCells(
+      model,
+      placeable.getWorldCells(),
+      essence,
+      undefined,
+      placeable.getRotation(),
+    );
+    model.step(1, WEATHER);
+
+    expect(model.getTile(2, 2)?.getRotation()).toBe(90);
+    expect(model.getTile(1, 2)?.getRotation()).toBe(90);
+    expect(model.getTile(3, 2)?.getEssence()).toBe(essence);
+    expect(model.getTile(3, 2)?.getRotation()).toBe(90);
+    expect(model.getTile(2, 1)?.isAlive()).toBe(false);
+  });
+
   it("applies parent and sprout evolutions during the same tick", () => {
     const essence = new MushroomSproutEssence();
     const model = new MapModel(8, 6);

@@ -51,7 +51,12 @@ export class CellCreatorManager {
       return;
     }
 
-    if (!this.mapManager.canPlacePlaceable(placement)) {
+    if (
+      !this.mapManager.canPlacePlaceable(
+        placement,
+        this.placementActor.getPlayerId(),
+      )
+    ) {
       return;
     }
 

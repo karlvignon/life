@@ -102,6 +102,14 @@ export class DevUIManager {
         { enabled },
       );
     });
+    this.eventManager.on("seed-range-map:toggle", ({ enabled }) => {
+      this.model.setSeedRangeMapEnabled(enabled);
+      this.view.syncFromModel(this.model);
+      this.gameEventBus.emit<GameEventMap["dev:seed-range-map-changed"]>(
+        "dev:seed-range-map-changed",
+        { enabled },
+      );
+    });
     this.eventManager.on("team-colors:toggle", ({ enabled }) => {
       this.model.setTeamColorsEnabled(enabled);
       this.view.syncFromModel(this.model);

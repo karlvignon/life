@@ -65,6 +65,14 @@ describe("DevUIModel", () => {
     expect(model.areTeamColorsEnabled()).toBe(true);
   });
 
+  it("toggles the selected team SeedRange map", () => {
+    const model = new DevUIModel();
+
+    expect(model.isSeedRangeMapEnabled()).toBe(false);
+    model.setSeedRangeMapEnabled(true);
+    expect(model.isSeedRangeMapEnabled()).toBe(true);
+  });
+
   it("syncs the game speed and exposes its normalized value", () => {
     const model = new DevUIModel();
 

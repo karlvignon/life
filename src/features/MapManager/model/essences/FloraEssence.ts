@@ -1,5 +1,5 @@
 import { createPatternBirthBehavior } from "../evolution/behaviors/PatternBirthBehavior";
-import { Essence } from "./Essence";
+import { Essence, type EssenceDefinition } from "./Essence";
 import type { BirthPattern } from "../evolution/behaviors/PatternBirthBehavior";
 
 export const DEFAULT_FLORA_COLOR = 0xec4899;
@@ -21,12 +21,16 @@ const FLORA_EVOLUTION = createPatternBirthBehavior(
 );
 
 export class FloraEssence extends Essence {
-  constructor(color: number = DEFAULT_FLORA_COLOR) {
+  constructor(
+    color: number = DEFAULT_FLORA_COLOR,
+    overrides: Partial<EssenceDefinition> = {},
+  ) {
     super({
       id: "flora",
       name: "Flora",
       color,
       evolutionBehaviors: [FLORA_EVOLUTION],
+      ...overrides,
     });
   }
 

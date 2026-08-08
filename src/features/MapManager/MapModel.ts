@@ -4,6 +4,12 @@ import type { PlayerId } from "../../core/types/player";
 import type { TeamId, TeamResolver } from "../../core/types/team";
 import type { Essence } from "./model/essences/Essence";
 import {
+  BLIND_SEEDING_BEHAVIOR_ID,
+  BlindSeeding,
+} from "./model/behaviors/BlindSeeding";
+import { SEED_RANGE_BEHAVIOR_ID, SeedRange } from "./model/behaviors/SeedRange";
+import type { TileBehavior } from "./model/behaviors/TileBehavior";
+import {
   emptyChangeSet,
   mergeChangeSets,
   type CellChange,
@@ -21,6 +27,7 @@ import {
   type MapRenderSnapshot,
   type ReproductibilityCellVisualState,
   type ReproductibilityMapSnapshot,
+  type SeedRangeMapSnapshot,
 } from "./render/types";
 
 export class MapModel {
@@ -99,6 +106,7 @@ export class MapModel {
     y: number,
     essence: Essence,
     provenance: TileProvenance,
+    behaviors: ReadonlyArray<TileBehavior> = [],
   ): CellChangeSet {
     const tile = this.getTile(x, y);
     if (!tile) {
@@ -114,7 +122,7 @@ export class MapModel {
       this.removeModifiersAuthoredBy(x, y, previousEssence);
     }
 
-    tile.makeAlive({ essence, provenance });
+    tile.makeAlive({ essence, provenance, behaviors });
     this.registry.set(index, essence);
 
     const visualStateChanged =
@@ -148,6 +156,7 @@ export class MapModel {
     cells: ReadonlyArray<{ x: number; y: number }>,
     essence: Essence,
     provenance: TileProvenance,
+    behaviors: ReadonlyArray<TileBehavior> = [],
   ): CellChangeSet {
     if (!this.canPlaceCells(cells, essence)) {
       return emptyChangeSet();
@@ -170,7 +179,7 @@ export class MapModel {
         this.removeModifiersAuthoredBy(x, y, previousEssence);
       }
 
-      tile.makeAlive({ essence, provenance });
+      tile.makeAlive({ essence, provenance, behaviors });
       this.registry.set(index, essence);
 
       const visualStateChanged =
@@ -207,6 +216,49 @@ export class MapModel {
         tile !== null && (!tile.isAlive() || tile.getEssence() === essence)
       );
     });
+  }
+
+  canSeedCells(
+    cells: ReadonlyArray<{ x: number; y: number }>,
+    essence: Essence,
+    playerId: PlayerId,
+    behaviors: ReadonlyArray<TileBehavior> = [],
+  ): boolean {
+    if (!playerId.trim() || !this.canPlaceCells(cells, essence)) {
+      return false;
+    }
+
+    if (hasBlindSeeding(behaviors)) {
+      return true;
+    }
+
+    const coveredIndices = this.collectTeamSeedRangeIndices(
+      this.resolveTeamId(playerId),
+    );
+    return cells.every(({ x, y }) =>
+      coveredIndices.has(packIndex(x, y, this._gridWidth)),
+    );
+  }
+
+  seedCells(
+    cells: ReadonlyArray<{ x: number; y: number }>,
+    essence: Essence,
+    playerId: PlayerId,
+    behaviors: ReadonlyArray<TileBehavior> = [],
+  ): CellChangeSet {
+    if (!this.canSeedCells(cells, essence, playerId, behaviors)) {
+      return emptyChangeSet();
+    }
+
+    return this.placeCells(
+      cells,
+      essence,
+      {
+        kind: "player-placement",
+        playerId,
+      },
+      behaviors,
+    );
   }
 
   clearLivingCells(): CellChangeSet {
@@ -254,6 +306,7 @@ export class MapModel {
         essence: cell.essence,
         properties: cell.data,
         provenance: cell.provenance,
+        behaviors: cell.behaviors,
       });
       this.registry.set(index, cell.essence);
       this.applyBirthModifiers(cell.x, cell.y, cell.essence);
@@ -483,6 +536,19 @@ export class MapModel {
     return { livingCells };
   }
 
+  createSeedRangeMapSnapshot(playerId: PlayerId): SeedRangeMapSnapshot {
+    const team = this.teamResolver?.getPlayerTeam(playerId) ?? null;
+    const teamId = team?.id ?? playerId;
+    const coveredCells = [...this.collectTeamSeedRangeIndices(teamId)]
+      .filter((index) => !this.registry.has(index))
+      .map((index) => ({
+        x: index % this._gridWidth,
+        y: Math.floor(index / this._gridWidth),
+      }));
+
+    return { coveredCells };
+  }
+
   cellChangesToVisualStates(
     changeSet: CellChangeSet,
     resolvePlayerColor?: (playerId: PlayerId) => number | null,
@@ -528,6 +594,7 @@ export class MapModel {
           essence: snapshot.essence,
           properties: snapshot.data,
           provenance: snapshot.provenance,
+          behaviors: snapshot.behaviors,
         });
         this.registry.set(index, snapshot.essence);
       }
@@ -570,6 +637,49 @@ export class MapModel {
 
   private resolveTeamId(playerId: PlayerId): TeamId {
     return this.teamResolver?.getPlayerTeam(playerId)?.id ?? playerId;
+  }
+
+  private collectTeamSeedRangeIndices(teamId: TeamId): Set<number> {
+    const coveredIndices = new Set<number>();
+
+    this.registry.forEach((_index, _essence, x, y) => {
+      const tile = this.getTile(x, y);
+      const provenance = tile?.getProvenance();
+      if (
+        !tile ||
+        !provenance ||
+        this.resolveTeamId(provenance.playerId) !== teamId
+      ) {
+        return;
+      }
+
+      const seedRange = tile.getBehavior<SeedRange>(SEED_RANGE_BEHAVIOR_ID);
+      if (!seedRange) {
+        return;
+      }
+      for (
+        let offsetY = -seedRange.value;
+        offsetY <= seedRange.value;
+        offsetY++
+      ) {
+        for (
+          let offsetX = -seedRange.value;
+          offsetX <= seedRange.value;
+          offsetX++
+        ) {
+          const coveredX = x + offsetX;
+          const coveredY = y + offsetY;
+          if (
+            this.isInBounds(coveredX, coveredY) &&
+            seedRange.containsOffset(offsetX, offsetY)
+          ) {
+            coveredIndices.add(packIndex(coveredX, coveredY, this._gridWidth));
+          }
+        }
+      }
+    }, this._gridWidth);
+
+    return coveredIndices;
   }
 
   private applyBirthModifiers(x: number, y: number, essence: Essence): void {
@@ -647,4 +757,12 @@ export class MapModel {
   private isInBounds(x: number, y: number): boolean {
     return x >= 0 && x < this._gridWidth && y >= 0 && y < this._gridHeight;
   }
+}
+
+function hasBlindSeeding(behaviors: ReadonlyArray<TileBehavior>): boolean {
+  return behaviors.some(
+    (behavior) =>
+      behavior.id === BLIND_SEEDING_BEHAVIOR_ID &&
+      behavior instanceof BlindSeeding,
+  );
 }

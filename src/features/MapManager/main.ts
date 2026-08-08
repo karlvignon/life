@@ -13,6 +13,7 @@ import { MapEventManager } from "./MapEventManager";
 import { MapModel } from "./MapModel";
 import { MapView } from "./MapView";
 import { ReproductibilityMapView } from "./ReproductibilityMapView";
+import { SeedRangeMapView } from "./SeedRangeMapView";
 import { TileInfoView } from "./TileInfoView";
 import type { CellChangeSet } from "./model/CellChangeSet";
 import { Placeable } from "./model/Placeable";
@@ -31,6 +32,7 @@ import {
 
 export type { CellOffset } from "../../core/types/grid";
 export { ReproductibilityMapView } from "./ReproductibilityMapView";
+export { SeedRangeMapView } from "./SeedRangeMapView";
 export { Placeable } from "./model/Placeable";
 export { Tile } from "./model/Tile";
 export {
@@ -50,6 +52,20 @@ export {
   type EvolutionProposal,
   type WeatherBehavior,
 } from "./model/essences/Essence";
+export {
+  BLIND_SEEDING_BEHAVIOR_ID,
+  BlindSeeding,
+} from "./model/behaviors/BlindSeeding";
+export { SEED_RANGE_BEHAVIOR_ID, SeedRange } from "./model/behaviors/SeedRange";
+export type { TileBehavior } from "./model/behaviors/TileBehavior";
+export {
+  createTileBehavior,
+  createTileBehaviors,
+  tileBehaviorFactory,
+  TileBehaviorFactory,
+  type TileBehaviorCreator,
+  type TileBehaviorType,
+} from "./model/behaviors/TileBehaviorFactory";
 export {
   createEssence,
   essenceCatalog,
@@ -137,6 +153,7 @@ export class MapManager {
   private readonly chunkRenderDebugModel = new ChunkRenderDebugModel();
   private readonly chunkRenderDebugView: ChunkRenderDebugView;
   private readonly reproductibilityMapView: ReproductibilityMapView;
+  private readonly seedRangeMapView: SeedRangeMapView;
 
   private model: MapModel | null = null;
   private mapView: MapView | null = null;
@@ -152,6 +169,9 @@ export class MapManager {
   private chunkRenderDebugDirty = false;
   private reproductibilityMapEnabled = false;
   private reproductibilityMapDirty = false;
+  private seedRangeMapEnabled = false;
+  private seedRangeMapDirty = false;
+  private seedRangePlayerId: PlayerId | null = null;
   private teamColorsEnabled = false;
 
   private readonly onResize = (): void => {
@@ -168,6 +188,7 @@ export class MapManager {
     this.cellSize = config.cellSize ?? DEFAULT_CELL_SIZE;
     this.chunkRenderDebugView = new ChunkRenderDebugView(this.cellSize);
     this.reproductibilityMapView = new ReproductibilityMapView(this.cellSize);
+    this.seedRangeMapView = new SeedRangeMapView(this.cellSize);
     this.uiRoot = new Container();
     this.uiRoot.label = "uiRoot";
     this.stage.addChild(this.uiRoot);
@@ -201,6 +222,7 @@ export class MapManager {
     this.queueDelta(this.model.step(currentCycle, weather));
     this.tileInfoDirty = this.lastHoveredTile !== null;
     this.reproductibilityMapDirty = this.reproductibilityMapEnabled;
+    this.seedRangeMapDirty = this.seedRangeMapEnabled;
   }
 
   render(): void {
@@ -237,6 +259,17 @@ export class MapManager {
       this.reproductibilityMapDirty = false;
     }
 
+    if (
+      this.seedRangeMapEnabled &&
+      this.seedRangeMapDirty &&
+      this.seedRangePlayerId
+    ) {
+      this.seedRangeMapView.sync(
+        this.model.createSeedRangeMapSnapshot(this.seedRangePlayerId),
+      );
+      this.seedRangeMapDirty = false;
+    }
+
     if (this.tileInfoDirty) {
       this.tileInfoUi.setTile(this.lastHoveredTile);
       this.tileInfoDirty = false;
@@ -248,6 +281,7 @@ export class MapManager {
       this.renderDirty ||
       this.chunkRenderDebugDirty ||
       this.reproductibilityMapDirty ||
+      this.seedRangeMapDirty ||
       this.tileInfoDirty
     );
   }
@@ -274,6 +308,28 @@ export class MapManager {
 
     this.reproductibilityMapView.clear();
     this.reproductibilityMapDirty = false;
+  }
+
+  setSeedRangeMapEnabled(enabled: boolean): void {
+    this.seedRangeMapEnabled = enabled;
+    this.seedRangeMapView.visible = enabled;
+
+    if (enabled) {
+      this.seedRangeMapDirty = true;
+      return;
+    }
+
+    this.seedRangeMapView.clear();
+    this.seedRangeMapDirty = false;
+  }
+
+  setSeedRangePlayer(playerId: PlayerId): void {
+    if (!playerId.trim() || this.seedRangePlayerId === playerId) {
+      return;
+    }
+
+    this.seedRangePlayerId = playerId;
+    this.seedRangeMapDirty = this.seedRangeMapEnabled;
   }
 
   setTeamColorsEnabled(enabled: boolean): void {
@@ -333,28 +389,32 @@ export class MapManager {
     return { x: gridX, y: gridY };
   }
 
-  canPlacePlaceable(placeable: Placeable): boolean {
+  canPlacePlaceable(placeable: Placeable, playerId: PlayerId): boolean {
     return (
-      this.model?.canPlaceCells(
+      this.model?.canSeedCells(
         placeable.getWorldCells(),
         placeable.getEssence(),
+        playerId,
+        placeable.getBehaviors(),
       ) ?? false
     );
   }
 
   placePlaceable(placeable: Placeable, playerId: PlayerId): boolean {
-    if (!this.model || !this.canPlacePlaceable(placeable)) {
+    if (!this.model || !this.canPlacePlaceable(placeable, playerId)) {
       return false;
     }
 
-    const changes = this.model.placeCells(
+    const changes = this.model.seedCells(
       placeable.getWorldCells(),
       placeable.getEssence(),
-      { kind: "player-placement", playerId },
+      playerId,
+      placeable.getBehaviors(),
     );
     this.queueDelta(changes);
     this.tileInfoDirty = this.lastHoveredTile !== null;
     this.reproductibilityMapDirty = this.reproductibilityMapEnabled;
+    this.seedRangeMapDirty = this.seedRangeMapEnabled;
     return true;
   }
 
@@ -367,6 +427,7 @@ export class MapManager {
     this.queueDelta(changes);
     this.tileInfoDirty = this.lastHoveredTile !== null;
     this.reproductibilityMapDirty = this.reproductibilityMapEnabled;
+    this.seedRangeMapDirty = this.seedRangeMapEnabled;
   }
 
   destroy(): void {
@@ -375,6 +436,7 @@ export class MapManager {
     this.eventManager.destroy();
     this.chunkRenderDebugView.destroy();
     this.reproductibilityMapView.destroy();
+    this.seedRangeMapView.destroy();
 
     if (this.mapView) {
       this.mapView.destroyGrid();
@@ -465,7 +527,11 @@ export class MapManager {
       this.mapView = new MapView(this.cellSize);
       this.mapView
         .getOverlayLayer()
-        .addChild(this.reproductibilityMapView, this.chunkRenderDebugView);
+        .addChild(
+          this.reproductibilityMapView,
+          this.seedRangeMapView,
+          this.chunkRenderDebugView,
+        );
       this.stage.addChild(this.mapView);
       this.bindMapPointerEvents();
     } else {
@@ -536,6 +602,7 @@ export class MapManager {
     this.pendingDelta = null;
     this.renderDirty = true;
     this.reproductibilityMapDirty = this.reproductibilityMapEnabled;
+    this.seedRangeMapDirty = this.seedRangeMapEnabled;
   }
 
   private queueDelta(changeSet: CellChangeSet): void {

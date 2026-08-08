@@ -35,6 +35,10 @@ export class DevUIView extends Container {
   private readonly reproductibilityMapCheckbox = new Graphics();
   private readonly reproductibilityMapCheckmark = new Graphics();
   private readonly reproductibilityMapLabel: Text;
+  private readonly seedRangeMapToggle = new Container();
+  private readonly seedRangeMapCheckbox = new Graphics();
+  private readonly seedRangeMapCheckmark = new Graphics();
+  private readonly seedRangeMapLabel: Text;
   private readonly teamColorsToggle = new Container();
   private readonly teamColorsCheckbox = new Graphics();
   private readonly teamColorsCheckmark = new Graphics();
@@ -102,6 +106,14 @@ export class DevUIView extends Container {
         fontSize: 12,
       },
     });
+    this.seedRangeMapLabel = new Text({
+      text: "Selected team SeedRange",
+      style: {
+        fill: SECONDARY_TEXT_COLOR,
+        fontFamily: "monospace",
+        fontSize: 12,
+      },
+    });
     this.teamColorsLabel = new Text({
       text: "Team colors (blue / red)",
       style: {
@@ -130,6 +142,12 @@ export class DevUIView extends Container {
       this.reproductibilityMapCheckmark,
       this.reproductibilityMapLabel,
     );
+    this.seedRangeMapLabel.position.set(CHECKBOX_SIZE + 7, 0);
+    this.seedRangeMapToggle.addChild(
+      this.seedRangeMapCheckbox,
+      this.seedRangeMapCheckmark,
+      this.seedRangeMapLabel,
+    );
     this.teamColorsLabel.position.set(CHECKBOX_SIZE + 7, 0);
     this.teamColorsToggle.addChild(
       this.teamColorsCheckbox,
@@ -149,6 +167,7 @@ export class DevUIView extends Container {
       this.speedSlider,
       this.cardCostToggle,
       this.reproductibilityMapToggle,
+      this.seedRangeMapToggle,
       this.teamColorsToggle,
     );
     this.position.set(12, 12);
@@ -173,6 +192,7 @@ export class DevUIView extends Container {
     this.drawCheckbox(enabled);
     this.drawCardCostCheckbox(model.areCardStaminaCostsDisabled());
     this.drawReproductibilityMapCheckbox(model.isReproductibilityMapEnabled());
+    this.drawSeedRangeMapCheckbox(model.isSeedRangeMapEnabled());
     this.drawTeamColorsCheckbox(model.areTeamColorsEnabled());
     this.speedSlider.setState(
       model.getNormalizedSpeed(),
@@ -222,6 +242,13 @@ export class DevUIView extends Container {
       "pointerdown",
       this.onToggleReproductibilityMap,
     );
+    this.seedRangeMapToggle.eventMode = "static";
+    this.seedRangeMapToggle.cursor = "pointer";
+    this.seedRangeMapToggle.hitArea = {
+      contains: (x: number, y: number) =>
+        x >= 0 && x <= CONTROL_WIDTH && y >= 0 && y <= CHECKBOX_SIZE,
+    };
+    this.seedRangeMapToggle.on("pointerdown", this.onToggleSeedRangeMap);
     this.teamColorsToggle.eventMode = "static";
     this.teamColorsToggle.cursor = "pointer";
     this.teamColorsToggle.hitArea = {
@@ -238,6 +265,7 @@ export class DevUIView extends Container {
       "pointerdown",
       this.onToggleReproductibilityMap,
     );
+    this.seedRangeMapToggle.off("pointerdown", this.onToggleSeedRangeMap);
     this.teamColorsToggle.off("pointerdown", this.onToggleTeamColors);
   }
 
@@ -271,6 +299,16 @@ export class DevUIView extends Container {
     });
   };
 
+  private readonly onToggleSeedRangeMap = (): void => {
+    if (!this.model) {
+      return;
+    }
+
+    this.eventManager.emit("seed-range-map:toggle", {
+      enabled: !this.model.isSeedRangeMapEnabled(),
+    });
+  };
+
   private readonly onToggleTeamColors = (): void => {
     if (!this.model) {
       return;
@@ -292,7 +330,8 @@ export class DevUIView extends Container {
     const speedY = gameplayTitleY + this.gameplayTitle.height + 8;
     const cardCostY = speedY + this.speedSlider.controlHeight + 8;
     const reproductibilityMapY = cardCostY + CHECKBOX_SIZE + 8;
-    const teamColorsY = reproductibilityMapY + CHECKBOX_SIZE + 8;
+    const seedRangeMapY = reproductibilityMapY + CHECKBOX_SIZE + 8;
+    const teamColorsY = seedRangeMapY + CHECKBOX_SIZE + 8;
 
     this.separator.clear();
     this.separator
@@ -313,6 +352,7 @@ export class DevUIView extends Container {
       PANEL_PADDING,
       reproductibilityMapY,
     );
+    this.seedRangeMapToggle.position.set(PANEL_PADDING, seedRangeMapY);
     this.teamColorsToggle.position.set(PANEL_PADDING, teamColorsY);
   }
 
@@ -334,6 +374,14 @@ export class DevUIView extends Container {
 
   private drawTeamColorsCheckbox(enabled: boolean): void {
     drawCheckbox(this.teamColorsCheckbox, this.teamColorsCheckmark, enabled);
+  }
+
+  private drawSeedRangeMapCheckbox(enabled: boolean): void {
+    drawCheckbox(
+      this.seedRangeMapCheckbox,
+      this.seedRangeMapCheckmark,
+      enabled,
+    );
   }
 
   private drawBackground(): void {

@@ -16,8 +16,24 @@ export const ESSENCE_DEFINITIONS: ReadonlyArray<EssenceCatalogEntry> = [
   { id: "tree", label: "Tree", defaultEssenceId: "tree" },
 ];
 
+export const DEFAULT_CARD_SEED_RANGE_VALUE = 3;
+
+const DEFAULT_CARD_BEHAVIORS = Object.freeze([
+  Object.freeze({
+    type: "seed-range" as const,
+    value: DEFAULT_CARD_SEED_RANGE_VALUE,
+  }),
+]);
+
 /** Catalogue métier exhaustif des combinaisons essence / motif plaçables. */
-export const CARD_DEFINITIONS: ReadonlyArray<CardDefinition> = [
+const CARD_ENTRIES: ReadonlyArray<CardDefinition> = [
+  {
+    familyId: "game-of-life",
+    patternId: "start",
+    label: "START",
+    staminaCost: 1,
+    behaviors: [{ type: "seed-range", value: 4 }, { type: "blind-seeding" }],
+  },
   {
     familyId: "game-of-life",
     patternId: "genesis",
@@ -68,6 +84,13 @@ export const CARD_DEFINITIONS: ReadonlyArray<CardDefinition> = [
   },
   {
     familyId: "high-life",
+    patternId: "start",
+    label: "START",
+    staminaCost: 1,
+    behaviors: [{ type: "seed-range", value: 4 }, { type: "blind-seeding" }],
+  },
+  {
+    familyId: "high-life",
     patternId: "genesis",
     label: "Genesis",
     staminaCost: 30,
@@ -94,7 +117,21 @@ export const CARD_DEFINITIONS: ReadonlyArray<CardDefinition> = [
     staminaCost: 100,
   },
   { familyId: "high-life", patternId: "cell", label: "Cell", staminaCost: 1 },
+  {
+    familyId: "static",
+    patternId: "start",
+    label: "START",
+    staminaCost: 1,
+    behaviors: [{ type: "seed-range", value: 4 }, { type: "blind-seeding" }],
+  },
   { familyId: "static", patternId: "cell", label: "Cell", staminaCost: 1 },
+  {
+    familyId: "mushroom",
+    patternId: "start",
+    label: "START",
+    staminaCost: 1,
+    behaviors: [{ type: "seed-range", value: 4 }, { type: "blind-seeding" }],
+  },
   { familyId: "mushroom", patternId: "cell", label: "Cell", staminaCost: 1 },
   {
     familyId: "mushroom",
@@ -115,12 +152,26 @@ export const CARD_DEFINITIONS: ReadonlyArray<CardDefinition> = [
     label: "Sprout",
     staminaCost: 20,
   },
+  {
+    familyId: "flora",
+    patternId: "start",
+    label: "START",
+    staminaCost: 1,
+    behaviors: [{ type: "seed-range", value: 4 }, { type: "blind-seeding" }],
+  },
   { familyId: "flora", patternId: "cell", label: "Cell", staminaCost: 1 },
   {
     familyId: "flora",
     patternId: "flora-birth",
     label: "Birth pattern",
     staminaCost: 80,
+  },
+  {
+    familyId: "tree",
+    patternId: "start",
+    label: "START",
+    staminaCost: 1,
+    behaviors: [{ type: "seed-range", value: 4 }, { type: "blind-seeding" }],
   },
   { familyId: "tree", patternId: "cell", label: "Cell", staminaCost: 1 },
   {
@@ -136,6 +187,18 @@ export const CARD_DEFINITIONS: ReadonlyArray<CardDefinition> = [
     staminaCost: 40,
   },
 ];
+
+/** Toutes les cartes posées projettent une portée ; START la surcharge à 4. */
+export const CARD_DEFINITIONS: ReadonlyArray<CardDefinition> = Object.freeze(
+  CARD_ENTRIES.map((definition) =>
+    Object.freeze({
+      ...definition,
+      behaviors: Object.freeze([
+        ...(definition.behaviors ?? DEFAULT_CARD_BEHAVIORS),
+      ]),
+    }),
+  ),
+);
 
 export function createCardId(
   familyId: EssenceFamilyId,

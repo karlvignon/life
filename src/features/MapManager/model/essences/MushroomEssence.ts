@@ -7,6 +7,7 @@ import {
 } from "../evolution/behaviors/PatternBirthBehavior";
 import {
   Essence,
+  type EssenceDefinition,
   type EssenceEvolutionInput,
   type WeatherBehavior,
 } from "./Essence";
@@ -39,7 +40,10 @@ const MUSHROOM_EVOLUTION = createPatternBirthBehavior(
 );
 
 export class MushroomEssence extends Essence {
-  constructor(color: number = DEFAULT_MUSHROOM_COLOR) {
+  constructor(
+    color: number = DEFAULT_MUSHROOM_COLOR,
+    overrides: Partial<EssenceDefinition> = {},
+  ) {
     super({
       id: "mushroom",
       evolutionFamilyId: "mushroom",
@@ -48,6 +52,7 @@ export class MushroomEssence extends Essence {
       color,
       evolutionBehaviors: [MUSHROOM_EVOLUTION],
       weatherBehaviors: [MUSHROOM_COLD_WEATHER_BEHAVIOR],
+      ...overrides,
     });
   }
 

@@ -31,6 +31,15 @@ export interface ReproductibilityMapSnapshot {
   readonly livingCells: ReadonlyArray<ReproductibilityCellVisualState>;
 }
 
+export interface SeedRangeCellVisualState {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface SeedRangeMapSnapshot {
+  readonly coveredCells: ReadonlyArray<SeedRangeCellVisualState>;
+}
+
 export interface MapRenderDelta {
   readonly revision: number;
   readonly changedCells: ReadonlyArray<CellVisualState>;

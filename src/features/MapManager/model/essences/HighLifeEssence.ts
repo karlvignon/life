@@ -1,5 +1,5 @@
 import { createLifeLikeBehavior } from "../evolution/behaviors/LifeLikeBehavior";
-import { Essence } from "./Essence";
+import { Essence, type EssenceDefinition } from "./Essence";
 
 export const DEFAULT_HIGHLIFE_COLOR = 0x3b82f6;
 
@@ -9,12 +9,16 @@ const HIGHLIFE_EVOLUTION = createLifeLikeBehavior("highlife-b36-s23", {
 });
 
 export class HighLifeEssence extends Essence {
-  constructor(color: number = DEFAULT_HIGHLIFE_COLOR) {
+  constructor(
+    color: number = DEFAULT_HIGHLIFE_COLOR,
+    overrides: Partial<EssenceDefinition> = {},
+  ) {
     super({
       id: "high-life",
       name: "HighLife",
       color,
       evolutionBehaviors: [HIGHLIFE_EVOLUTION],
+      ...overrides,
     });
   }
 }

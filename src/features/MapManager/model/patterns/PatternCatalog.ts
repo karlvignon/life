@@ -45,6 +45,7 @@ export class PatternCatalog {
 }
 
 export const patternCatalog = new PatternCatalog([
+  { id: "start", encoding: "x=1;y=1;cells=1" },
   {
     id: "genesis",
     encoding: "x=6;y=5;cells=011111100001000001100010001000",

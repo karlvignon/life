@@ -23,7 +23,7 @@ describe("card definitions", () => {
       createCardId(familyId, patternId),
     );
 
-    expect(ids).toHaveLength(26);
+    expect(ids).toHaveLength(32);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -34,6 +34,7 @@ describe("card definitions", () => {
       ).map(({ patternId }) => patternId);
 
     expect(idsFor("game-of-life")).toEqual([
+      "start",
       "genesis",
       "glider",
       "lwss",
@@ -44,15 +45,21 @@ describe("card definitions", () => {
       "cell",
     ]);
     expect(idsFor("high-life")).toEqual(idsFor("game-of-life"));
-    expect(idsFor("static")).toEqual(["cell"]);
+    expect(idsFor("static")).toEqual(["start", "cell"]);
     expect(idsFor("mushroom")).toEqual([
+      "start",
       "cell",
       "horizontal-line",
       "mushroom-birth",
       "mushroom-sprout",
     ]);
-    expect(idsFor("flora")).toEqual(["cell", "flora-birth"]);
-    expect(idsFor("tree")).toEqual(["cell", "five-cell-cross", "tree-birth"]);
+    expect(idsFor("flora")).toEqual(["start", "cell", "flora-birth"]);
+    expect(idsFor("tree")).toEqual([
+      "start",
+      "cell",
+      "five-cell-cross",
+      "tree-birth",
+    ]);
   });
 
   it("resolves only combinations declared by the core catalog", () => {
@@ -66,6 +73,21 @@ describe("card definitions", () => {
   it("declares a positive stamina cost for every card", () => {
     for (const definition of CARD_DEFINITIONS) {
       expect(definition.staminaCost).toBeGreaterThan(0);
+    }
+  });
+
+  it("declares range 3 on regular cards and range 4 plus BlindSeeding on START", () => {
+    for (const definition of CARD_DEFINITIONS) {
+      if (definition.patternId === "start") {
+        expect(definition.behaviors).toEqual([
+          { type: "seed-range", value: 4 },
+          { type: "blind-seeding" },
+        ]);
+      } else {
+        expect(definition.behaviors).toEqual([
+          { type: "seed-range", value: 3 },
+        ]);
+      }
     }
   });
 });

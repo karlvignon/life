@@ -42,6 +42,7 @@ export class Game {
   private readonly weatherManager: WeatherManager;
   private readonly playerManager: PlayerManager;
   private readonly unsubscribeReproductibilityMapChanged: () => void;
+  private readonly unsubscribeSeedRangeMapChanged: () => void;
   private readonly unsubscribeTeamColorsChanged: () => void;
 
   constructor(app: Application, config: GameConfig) {
@@ -65,6 +66,11 @@ export class Game {
     >("dev:reproductibility-map-changed", ({ enabled }) => {
       this.mapManager.setReproductibilityMapEnabled(enabled);
     });
+    this.unsubscribeSeedRangeMapChanged = this.eventBus.on<
+      GameEventMap["dev:seed-range-map-changed"]
+    >("dev:seed-range-map-changed", ({ enabled }) => {
+      this.mapManager.setSeedRangeMapEnabled(enabled);
+    });
     this.unsubscribeTeamColorsChanged = this.eventBus.on<
       GameEventMap["dev:team-colors-changed"]
     >("dev:team-colors-changed", ({ enabled }) => {
@@ -83,6 +89,7 @@ export class Game {
       playerConfigs,
       this.teamManager,
     );
+    this.mapManager.setSeedRangePlayer(this.playerManager.getPlayerId());
     this.cellCreatorManager = new CellCreatorManager(
       app,
       this.eventBus,
@@ -122,6 +129,7 @@ export class Game {
   destroy(): void {
     this.app.ticker.stop();
     this.unsubscribeReproductibilityMapChanged();
+    this.unsubscribeSeedRangeMapChanged();
     this.unsubscribeTeamColorsChanged();
     this.devUIManager?.destroy();
     this.seasonManager.destroy();
@@ -153,6 +161,8 @@ export class Game {
   }
 
   private render(): void {
+    this.mapManager.setSeedRangePlayer(this.playerManager.getPlayerId());
+
     if (
       this.mapManager.needsRender() ||
       this.cellCreatorManager.needsRender()

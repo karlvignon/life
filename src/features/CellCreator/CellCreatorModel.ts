@@ -42,7 +42,13 @@ export class CellCreatorModel {
 
     this.selectedCard = card;
     this.previewOrigin = null;
-    this.selectedPlaceable = new Placeable(card.pattern, card.essence, 0, 0);
+    this.selectedPlaceable = new Placeable(
+      card.pattern,
+      card.essence,
+      0,
+      0,
+      card.behaviors,
+    );
   }
 
   clearSelectedCard(): void {
@@ -88,6 +94,7 @@ export class CellCreatorModel {
       this.selectedCard.essence,
       this.previewOrigin.x,
       this.previewOrigin.y,
+      this.selectedCard.behaviors,
     );
   }
 }

@@ -14,6 +14,7 @@ export class DevUIModel {
   private weatherOverrideEnabled = false;
   private cardStaminaCostsDisabled = false;
   private reproductibilityMapEnabled = false;
+  private seedRangeMapEnabled = false;
   private teamColorsEnabled = false;
   private minSpeed = 0;
   private maxSpeed = 10;
@@ -70,6 +71,14 @@ export class DevUIModel {
 
   isReproductibilityMapEnabled(): boolean {
     return this.reproductibilityMapEnabled;
+  }
+
+  setSeedRangeMapEnabled(enabled: boolean): void {
+    this.seedRangeMapEnabled = enabled;
+  }
+
+  isSeedRangeMapEnabled(): boolean {
+    return this.seedRangeMapEnabled;
   }
 
   setTeamColorsEnabled(enabled: boolean): void {

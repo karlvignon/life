@@ -2,7 +2,11 @@ import {
   createPatternBirthBehavior,
   type BirthPattern,
 } from "../evolution/behaviors/PatternBirthBehavior";
-import { Essence, type BirthModifierDefinition } from "./Essence";
+import {
+  Essence,
+  type BirthModifierDefinition,
+  type EssenceDefinition,
+} from "./Essence";
 
 export const DEFAULT_TREE_COLOR = 0x16a34a;
 export const TREE_NEIGHBOR_DEGREES_MODIFIER = -2;
@@ -37,13 +41,17 @@ const TREE_EVOLUTION = createPatternBirthBehavior(
 );
 
 export class TreeEssence extends Essence {
-  constructor(color: number = DEFAULT_TREE_COLOR) {
+  constructor(
+    color: number = DEFAULT_TREE_COLOR,
+    overrides: Partial<EssenceDefinition> = {},
+  ) {
     super({
       id: "tree",
       name: "Tree",
       color,
       evolutionBehaviors: [TREE_EVOLUTION],
       birthModifiers: TEMPERATURE_MODIFIERS,
+      ...overrides,
     });
   }
 

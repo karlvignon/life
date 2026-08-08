@@ -18,4 +18,14 @@ export interface CardDefinition {
   readonly patternId: CardPatternId;
   readonly label: string;
   readonly staminaCost: number;
+  readonly behaviors?: ReadonlyArray<CardBehaviorDefinition>;
 }
+
+export type CardBehaviorDefinition =
+  | {
+      readonly type: "seed-range";
+      readonly value: number;
+    }
+  | {
+      readonly type: "blind-seeding";
+    };

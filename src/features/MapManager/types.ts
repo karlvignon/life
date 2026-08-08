@@ -3,6 +3,7 @@ import type { Essence } from "./model/essences/Essence";
 import type { Pattern } from "./model/patterns/Pattern";
 import { Tile } from "./model/Tile";
 import type { TileDataProperties } from "./model/TileData";
+import type { TileBehavior } from "./model/behaviors/TileBehavior";
 
 export type TileProvenance =
   | {
@@ -21,6 +22,7 @@ export interface TileSnapshot {
   essence: Essence | null;
   data: TileDataProperties | null;
   provenance: TileProvenance | null;
+  behaviors: ReadonlyArray<TileBehavior>;
 }
 
 export type HorizontalAlign = "start" | "center" | "end";

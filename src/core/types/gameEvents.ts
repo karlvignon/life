@@ -19,6 +19,7 @@ export type GameEventMap = {
   "dev:weather-override-changed": WeatherOverride;
   "dev:card-stamina-cost-changed": { disabled: boolean };
   "dev:reproductibility-map-changed": { enabled: boolean };
+  "dev:seed-range-map-changed": { enabled: boolean };
   "dev:team-colors-changed": { enabled: boolean };
   "game:placeable-selected": { placeable: Placeable | null };
 };

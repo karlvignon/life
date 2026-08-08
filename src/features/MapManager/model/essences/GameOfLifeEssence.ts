@@ -1,7 +1,11 @@
 import type { CellIndex, GridBounds } from "../../../../core/types/grid";
 import { packIndex } from "../../../../core/types/grid";
 import { createLifeLikeBehavior } from "../evolution/behaviors/LifeLikeBehavior";
-import { Essence, type EssenceEvolutionInput } from "./Essence";
+import {
+  Essence,
+  type EssenceDefinition,
+  type EssenceEvolutionInput,
+} from "./Essence";
 
 export const DEFAULT_GAME_OF_LIFE_COLOR = 0x00ff88;
 
@@ -12,12 +16,16 @@ const CONWAY_EVOLUTION = createLifeLikeBehavior("conway-b3-s23", {
 
 /** Configuration Conway B3/S23 composée avec le comportement LifeLike. */
 export class GameOfLifeEssence extends Essence {
-  constructor(color: number = DEFAULT_GAME_OF_LIFE_COLOR) {
+  constructor(
+    color: number = DEFAULT_GAME_OF_LIFE_COLOR,
+    overrides: Partial<EssenceDefinition> = {},
+  ) {
     super({
       id: "game-of-life",
       name: "Conway",
       color,
       evolutionBehaviors: [CONWAY_EVOLUTION],
+      ...overrides,
     });
   }
 }

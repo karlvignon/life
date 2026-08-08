@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { getCardDefinition } from "../../core/cards";
+import type { CardDefinition } from "../../core/types/cards";
 import {
+  BlindSeeding,
   GameOfLifeEssence,
   HighLifeEssence,
   MushroomSproutEssence,
+  SeedRange,
   createPattern,
 } from "../MapManager/main";
 import { Card } from "./Card";
 import { CellCreatorModel } from "./CellCreatorModel";
 import type { EssenceDefinition } from "./types";
+import type { Essence, TileBehavior } from "../MapManager/main";
 
 const conwayEssence = new GameOfLifeEssence();
 const conwayDefinition: EssenceDefinition = {
@@ -24,14 +28,12 @@ const highLifeDefinition: EssenceDefinition = {
   essence: highLifeEssence,
 };
 
-const conwayCellCard = new Card(
+const conwayCellCard = createTestCard(
   getCardDefinition("game-of-life", "cell")!,
-  createPattern("cell"),
   conwayEssence,
 );
-const highLifeCellCard = new Card(
+const highLifeCellCard = createTestCard(
   getCardDefinition("high-life", "cell")!,
-  createPattern("cell"),
   highLifeEssence,
 );
 
@@ -61,9 +63,8 @@ describe("CellCreatorModel", () => {
       label: "Mushroom",
       essence: new MushroomSproutEssence(),
     };
-    const card = new Card(
+    const card = createTestCard(
       getCardDefinition("mushroom", "mushroom-sprout")!,
-      createPattern("mushroom-sprout"),
       mushroomEssence,
     );
     const model = new CellCreatorModel(mushroomDefinition);
@@ -118,4 +119,40 @@ describe("CellCreatorModel", () => {
     expect(firstPlacement?.getEssence()).toBe(conwayCellCard.essence);
     expect(secondPlacement?.getEssence()).toBe(conwayCellCard.essence);
   });
+
+  it("passes card behaviors through every placement", () => {
+    const behaviors = [new SeedRange(4), new BlindSeeding()];
+    const startCard = createTestCard(
+      {
+        familyId: "game-of-life",
+        patternId: "start",
+        label: "START",
+        staminaCost: 1,
+      },
+      conwayEssence,
+      behaviors,
+    );
+    const model = new CellCreatorModel(conwayDefinition);
+
+    model.toggleSelectedCard(startCard);
+    model.setPreviewOrigin({ x: 2, y: 3 });
+
+    expect(model.getPreviewPlaceable()?.getBehaviors()).toEqual(behaviors);
+    expect(model.createPlacement()?.getBehaviors()).toEqual(behaviors);
+  });
 });
+
+function createTestCard(
+  definition: CardDefinition,
+  essence: Essence,
+  behaviors: ReadonlyArray<TileBehavior> = [],
+): Card {
+  return new Card({
+    familyId: definition.familyId,
+    label: definition.label,
+    staminaCost: definition.staminaCost,
+    pattern: createPattern(definition.patternId),
+    essence,
+    behaviors,
+  });
+}

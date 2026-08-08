@@ -2,8 +2,9 @@ import {
   CARD_DEFINITIONS,
   ESSENCE_DEFINITIONS as CORE_ESSENCE_DEFINITIONS,
 } from "../../core/cards";
-import { essenceCatalog, createPattern } from "../MapManager/main";
+import { essenceCatalog } from "../MapManager/main";
 import { Card } from "./Card";
+import { CardFactory } from "./CardFactory";
 import type { CardId, EssenceDefinition, EssenceFamilyId } from "./types";
 
 export const ESSENCE_DEFINITIONS: ReadonlyArray<EssenceDefinition> =
@@ -15,25 +16,11 @@ export const ESSENCE_DEFINITIONS: ReadonlyArray<EssenceDefinition> =
 
 export const DEFAULT_ESSENCE_DEFINITION = ESSENCE_DEFINITIONS[0]!;
 
-function getRequiredEssenceDefinition(
-  familyId: EssenceFamilyId,
-): EssenceDefinition {
-  const definition = ESSENCE_DEFINITIONS.find(({ id }) => id === familyId);
-  if (!definition) {
-    throw new Error(`Unknown essence family: ${familyId}`);
-  }
-  return definition;
-}
+const cardFactory = new CardFactory(ESSENCE_DEFINITIONS);
 
-export const CARDS: ReadonlyArray<Card> = CARD_DEFINITIONS.map((definition) => {
-  const family = getRequiredEssenceDefinition(definition.familyId);
-  const concreteEssenceId = definition.essenceId ?? family.essence.id;
-  return new Card(
-    definition,
-    createPattern(definition.patternId),
-    essenceCatalog.get(concreteEssenceId),
-  );
-});
+export const CARDS: ReadonlyArray<Card> = CARD_DEFINITIONS.map((definition) =>
+  cardFactory.create(definition),
+);
 
 validateResolvedCards(CARDS);
 

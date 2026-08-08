@@ -12,7 +12,12 @@ const devOptions = {
 (async () => {
   const app = new Application();
 
-  await app.init({ background: "#1099bb", resizeTo: window });
+  await app.init({
+    background: "#1099bb",
+    resizeTo: window,
+    resolution: window.devicePixelRatio,
+    autoDensity: true,
+  });
 
   document.getElementById("pixi-container")!.appendChild(app.canvas);
 

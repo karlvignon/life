@@ -16,6 +16,11 @@ export interface LivingCellEntry extends LivingCellReference {
   readonly rotation?: PlaceableRotation;
 }
 
+export interface BirthParentContribution {
+  readonly index: CellIndex;
+  readonly paidPoints: number;
+}
+
 export interface EssenceGeneration {
   readonly essence: Essence;
   readonly teamId: TeamId;
@@ -31,6 +36,7 @@ export interface AcceptedBirth {
   readonly teamId: TeamId;
   readonly playerId: PlayerId;
   readonly parentIndices: ReadonlyArray<CellIndex>;
+  readonly parentContributions: ReadonlyArray<BirthParentContribution>;
   readonly rotation: PlaceableRotation;
 }
 
@@ -46,5 +52,9 @@ export interface EvolutionOutput {
   readonly reproductionCosts: ReadonlyMap<CellIndex, number>;
   readonly newbornReproducibility: ReadonlyMap<CellIndex, number>;
   readonly newbornPlayerIds: ReadonlyMap<CellIndex, PlayerId>;
+  readonly newbornParentContributions: ReadonlyMap<
+    CellIndex,
+    ReadonlyArray<BirthParentContribution>
+  >;
   readonly newbornRotations: ReadonlyMap<CellIndex, PlaceableRotation>;
 }

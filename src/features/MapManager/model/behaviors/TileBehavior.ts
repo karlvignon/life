@@ -1,4 +1,5 @@
 /** Capacité métier attachée à une tuile vivante. */
-export interface TileBehavior {
-  readonly id: string;
+export abstract class TileBehavior {
+  abstract readonly id: string;
+  abstract readonly inheritable: boolean;
 }

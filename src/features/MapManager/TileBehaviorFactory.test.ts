@@ -15,7 +15,9 @@ describe("TileBehaviorFactory", () => {
 
     expect(behaviors[0]).toBeInstanceOf(SeedRange);
     expect((behaviors[0] as SeedRange).value).toBe(4);
+    expect(behaviors[0].inheritable).toBe(true);
     expect(behaviors[1]).toBeInstanceOf(BlindSeeding);
+    expect(behaviors[1].inheritable).toBe(false);
   });
 
   it("rejects duplicate creators", () => {

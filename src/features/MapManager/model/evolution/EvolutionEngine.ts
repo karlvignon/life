@@ -42,6 +42,12 @@ export function computeNextGeneration(input: EvolutionInput): EvolutionOutput {
       birth.playerId,
     ]),
   );
+  const newbornParentContributions = new Map(
+    [...competition.acceptedBirths].map(([index, birth]) => [
+      index,
+      birth.parentContributions,
+    ]),
+  );
   const newbornRotations = new Map(
     [...competition.acceptedBirths].map(([index, birth]) => [
       index,
@@ -54,6 +60,7 @@ export function computeNextGeneration(input: EvolutionInput): EvolutionOutput {
     reproductionCosts: competition.reproductionCosts,
     newbornReproducibility,
     newbornPlayerIds,
+    newbornParentContributions,
     newbornRotations,
   };
 }

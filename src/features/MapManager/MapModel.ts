@@ -10,6 +10,10 @@ import {
 import { SEED_RANGE_BEHAVIOR_ID, SeedRange } from "./model/behaviors/SeedRange";
 import type { TileBehavior } from "./model/behaviors/TileBehavior";
 import {
+  BehaviorInheritanceModel,
+  type BehaviorInheritance,
+} from "./model/behaviors/BehaviorInheritanceModel";
+import {
   emptyChangeSet,
   mergeChangeSets,
   type CellChange,
@@ -31,6 +35,11 @@ import {
   type SeedRangeMapSnapshot,
 } from "./render/types";
 
+export interface MapModelConfig {
+  readonly teamResolver?: TeamResolver;
+  readonly behaviorInheritance?: BehaviorInheritance;
+}
+
 export class MapModel {
   private _gridWidth: number;
   private _gridHeight: number;
@@ -40,15 +49,20 @@ export class MapModel {
     Essence,
     Map<string, Tile[]>
   >();
+  private readonly teamResolver?: TeamResolver;
+  private readonly behaviorInheritance: BehaviorInheritance;
   private renderRevision = 0;
 
   constructor(
     gridWidth: number,
     gridHeight: number,
-    private readonly teamResolver?: TeamResolver,
+    config: MapModelConfig = {},
   ) {
     this._gridWidth = gridWidth;
     this._gridHeight = gridHeight;
+    this.teamResolver = config.teamResolver;
+    this.behaviorInheritance =
+      config.behaviorInheritance ?? new BehaviorInheritanceModel();
     this.initGrid();
   }
 
@@ -377,6 +391,7 @@ export class MapModel {
       reproductionCosts,
       newbornReproducibility,
       newbornPlayerIds,
+      newbornParentContributions,
       newbornRotations,
     } = computeNextGeneration({
       bounds: { width: this._gridWidth, height: this._gridHeight },
@@ -396,45 +411,74 @@ export class MapModel {
       this._gridWidth,
     );
 
+    // Les naissances sont matérialisées avant les morts afin que le modèle
+    // d'héritage reçoive encore toutes les cellules parentes vivantes.
     for (const change of evolutionChanges) {
+      if (change.previousAlive || !change.nextAlive || !change.nextEssence) {
+        continue;
+      }
+
       const tile = this.getTile(change.x, change.y);
       if (!tile) {
         continue;
       }
 
-      if (change.previousAlive && change.previousEssence) {
-        this.removeModifiersAuthoredBy(
-          change.x,
-          change.y,
-          change.previousEssence,
+      const inheritedReproducibility = newbornReproducibility.get(change.index);
+      const properties =
+        inheritedReproducibility === undefined
+          ? undefined
+          : {
+              ...change.nextEssence.getInitialProperties(),
+              reproducibility: inheritedReproducibility,
+            };
+      const playerId = newbornPlayerIds.get(change.index);
+      if (!playerId) {
+        throw new Error(`Newborn cell ${change.index} has no owning player`);
+      }
+      const parentContributions = newbornParentContributions.get(change.index);
+      if (!parentContributions) {
+        throw new Error(`Newborn cell ${change.index} has no parent payments`);
+      }
+
+      tile.makeAlive({
+        essence: change.nextEssence,
+        properties,
+        provenance: { kind: "simulation-birth", playerId },
+        rotation: newbornRotations.get(change.index) ?? 0,
+      });
+      this.behaviorInheritance.inheritBehaviors(
+        tile,
+        parentContributions.map(({ index, paidPoints }) => {
+          const parentX = index % this._gridWidth;
+          const parentY = Math.floor(index / this._gridWidth);
+          const parentCell = this.getTile(parentX, parentY);
+          if (!parentCell?.isAlive()) {
+            throw new Error(`Behavior parent cell ${index} is not alive`);
+          }
+
+          return { cell: parentCell, paidPoints };
+        }),
+      );
+      this.applyBirthModifiers(change.x, change.y, change.nextEssence);
+    }
+
+    for (const change of evolutionChanges) {
+      if (!change.previousAlive || !change.previousEssence) {
+        continue;
+      }
+
+      if (change.nextAlive) {
+        throw new Error(
+          `Evolution cannot replace living cell ${change.index} with another essence`,
         );
       }
 
-      if (change.nextAlive && change.nextEssence) {
-        const inheritedReproducibility = newbornReproducibility.get(
-          change.index,
-        );
-        const properties =
-          inheritedReproducibility === undefined
-            ? undefined
-            : {
-                ...change.nextEssence.getInitialProperties(),
-                reproducibility: inheritedReproducibility,
-              };
-        const playerId = newbornPlayerIds.get(change.index);
-        if (!playerId) {
-          throw new Error(`Newborn cell ${change.index} has no owning player`);
-        }
-        tile.makeAlive({
-          essence: change.nextEssence,
-          properties,
-          provenance: { kind: "simulation-birth", playerId },
-          rotation: newbornRotations.get(change.index) ?? 0,
-        });
-        this.applyBirthModifiers(change.x, change.y, change.nextEssence);
-      } else {
-        tile.kill();
-      }
+      this.removeModifiersAuthoredBy(
+        change.x,
+        change.y,
+        change.previousEssence,
+      );
+      this.getTile(change.x, change.y)?.kill();
     }
 
     // Phase 2 : chaque cellule applique indépendamment les répercussions météo,

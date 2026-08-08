@@ -101,6 +101,24 @@ describe("BirthCompetitionResolver", () => {
     expect(result.reproductionCosts.size).toBe(3);
   });
 
+  it("records the payment made by every parent for behavior inheritance", () => {
+    const essence = createEssence("allied");
+    const living = [
+      cell(1, essence, "player-1", "blue"),
+      cell(2, essence, "player-2", "blue"),
+    ];
+    const result = resolveBirthCompetition(
+      [generation(essence, "blue", [1, 2])],
+      living,
+      1,
+    );
+
+    expect(result.acceptedBirths.get(target)?.parentContributions).toEqual([
+      { index: 1, paidPoints: 1 },
+      { index: 2, paidPoints: 1 },
+    ]);
+  });
+
   it("uses total reproducibility to break an equal player contribution", () => {
     const essence = createEssence("allied");
     const living = [

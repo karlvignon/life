@@ -146,7 +146,7 @@ describe("MushroomSproutEssence", () => {
     const teamResolver = {
       getPlayerTeam: () => ({ id: "blue", label: "Blue", color: 0x0000ff }),
     };
-    const model = new MapModel(5, 6, teamResolver);
+    const model = new MapModel(5, 6, { teamResolver });
     const mushroom = new MushroomEssence();
     const sprout = new MushroomSproutEssence();
     const mushroomOwner = {

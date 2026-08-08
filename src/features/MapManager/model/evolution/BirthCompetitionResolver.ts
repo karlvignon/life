@@ -69,6 +69,10 @@ export function resolveBirthCompetition(
     }
 
     const reproductionCost = winner.generation.essence.getReproductionCost();
+    const parentContributions = parentIndices.map((parentIndex) => ({
+      index: parentIndex,
+      paidPoints: reproductionCost,
+    }));
     for (const parentIndex of parentIndices) {
       remainingReproducibility.set(
         parentIndex,
@@ -86,6 +90,7 @@ export function resolveBirthCompetition(
       teamId: winner.generation.teamId,
       playerId,
       parentIndices,
+      parentContributions,
       rotation: winner.birth.rotation ?? 0,
     });
   }

@@ -44,7 +44,9 @@ propositions avec les indices des parents réellement utilisés.
 7. Les propositions sélectionnées entrent en compétition entre équipes.
 8. Le joueur propriétaire est choisi parmi les parents de l'équipe gagnante.
 9. Seuls les parents de la proposition gagnante paient.
-10. Les survivants et les naissances acceptées sont appliqués à la grille.
+10. Le parent ayant payé le plus transmet ses comportements héritables ; en
+    cas d'égalité, le parent est tiré au hasard.
+11. Les survivants et les naissances acceptées sont appliqués à la grille.
 
 Toutes les cases cibles sont traitées par index croissant. Ce choix rend la
 consommation de reproductibilité déterministe quand un même parent participe à
@@ -90,6 +92,20 @@ Tous les parents de la proposition gagnante paient, même s'ils appartiennent à
 des joueurs alliés différents. La reproductibilité du nouveau-né reste le
 minimum des scores restants de ses parents après les paiements du tick.
 
+## Héritage des comportements de cellule
+
+Chaque comportement attaché à une cellule déclare s'il est héritable. Une
+naissance choisit d'abord le parent ayant payé le coût le plus élevé pour cette
+naissance. Si plusieurs parents ont payé la même valeur, l'un d'eux est tiré au
+hasard. Le nouveau-né reçoit ensuite uniquement les comportements héritables de
+ce parent. `SeedRange` est héritable ; `BlindSeeding`, réservé au placement
+initial, ne l'est pas.
+
+Cette règle est encapsulée par `BehaviorInheritanceModel`. Sa méthode publique
+reçoit la cellule nouveau-née et toutes les contributions parentes sous la forme
+`{ cell, paidPoints }`. Le moteur de compétition ne fait que calculer et exposer
+ces paiements.
+
 ## Exemple Mushroom / Sprout
 
 Dans la configuration suivante, `e` est la case disputée et `n` une cellule
@@ -124,6 +140,8 @@ considéré comme sa propre équipe.
 ## Fichiers responsables
 
 - `model/essences/Essence.ts` : famille, ordre et propositions de comportements ;
+- `model/behaviors/BehaviorInheritanceModel.ts` : sélection du parent et
+  transmission des behaviors héritables ;
 - `model/evolution/EvolutionEngine.ts` : groupes famille/équipe et générations ;
 - `model/evolution/BirthCompetitionResolver.ts` : arbitrage et coûts ;
 - `model/evolution/GenerationMerger.ts` : application des résultats acceptés ;

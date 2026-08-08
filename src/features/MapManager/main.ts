@@ -29,6 +29,7 @@ import {
   type MapConfig,
   type TileSnapshot,
 } from "./types";
+import { BehaviorInheritanceModel } from "./model/behaviors/BehaviorInheritanceModel";
 
 export type { CellOffset } from "../../core/types/grid";
 export { ReproductibilityMapView } from "./ReproductibilityMapView";
@@ -58,7 +59,13 @@ export {
   BlindSeeding,
 } from "./model/behaviors/BlindSeeding";
 export { SEED_RANGE_BEHAVIOR_ID, SeedRange } from "./model/behaviors/SeedRange";
-export type { TileBehavior } from "./model/behaviors/TileBehavior";
+export { TileBehavior } from "./model/behaviors/TileBehavior";
+export {
+  BehaviorInheritanceModel,
+  type BehaviorInheritance,
+  type BehaviorInheritanceModelConfig,
+  type BehaviorInheritanceParent,
+} from "./model/behaviors/BehaviorInheritanceModel";
 export {
   createTileBehavior,
   createTileBehaviors,
@@ -525,7 +532,10 @@ export class MapManager {
     );
 
     if (!this.model) {
-      this.model = new MapModel(gridWidth, gridHeight, this.teamResolver);
+      this.model = new MapModel(gridWidth, gridHeight, {
+        teamResolver: this.teamResolver,
+        behaviorInheritance: new BehaviorInheritanceModel(),
+      });
       this.mapView = new MapView(this.cellSize);
       this.mapView
         .getOverlayLayer()

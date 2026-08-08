@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { PlayerId } from "../../core/types/player";
 import type { TeamResolver } from "../../core/types/team";
 import { MapModel } from "./MapModel";
+import { BehaviorInheritanceModel } from "./model/behaviors/BehaviorInheritanceModel";
 import {
   BLIND_SEEDING_BEHAVIOR_ID,
   BlindSeeding,
@@ -37,7 +38,7 @@ describe("tile seeding behaviors", () => {
   });
 
   it("lets a living tile receive, replace and remove behaviors", () => {
-    const model = new MapModel(3, 3, teamResolver);
+    const model = new MapModel(3, 3, { teamResolver });
     const essence = new StaticEssence();
     model.setCellAlive(1, 1, essence, {
       kind: "player-placement",
@@ -56,7 +57,7 @@ describe("tile seeding behaviors", () => {
   });
 
   it("requires every cell of a placement to be inside allied vision", () => {
-    const model = new MapModel(10, 10, teamResolver);
+    const model = new MapModel(10, 10, { teamResolver });
     const essence = new StaticEssence();
 
     model.setCellAlive(
@@ -86,7 +87,7 @@ describe("tile seeding behaviors", () => {
   });
 
   it("uses incoming BlindSeeding without bypassing collision rules", () => {
-    const model = new MapModel(8, 8, teamResolver);
+    const model = new MapModel(8, 8, { teamResolver });
     const essence = essenceCatalog.get("game-of-life");
     const behaviors = [new SeedRange(4), new BlindSeeding()];
 
@@ -116,8 +117,14 @@ describe("tile seeding behaviors", () => {
     ).toBe(false);
   });
 
-  it("does not duplicate behaviors onto simulation births", () => {
-    const model = new MapModel(5, 5, teamResolver);
+  it("inherits SeedRange but not BlindSeeding onto simulation births", () => {
+    const behaviorInheritanceRandomSource = vi.fn(() => 0);
+    const model = new MapModel(5, 5, {
+      teamResolver,
+      behaviorInheritance: new BehaviorInheritanceModel({
+        paymentTieBreakerRandomSource: behaviorInheritanceRandomSource,
+      }),
+    });
     const essence = essenceCatalog.get("game-of-life");
     const behaviors = [new SeedRange(4), new BlindSeeding()];
 
@@ -139,12 +146,13 @@ describe("tile seeding behaviors", () => {
     });
 
     expect(model.getTile(2, 2)?.getBehaviors()).toEqual(behaviors);
-    expect(model.getTile(2, 1)?.getBehaviors()).toEqual([]);
-    expect(model.getTile(2, 3)?.getBehaviors()).toEqual([]);
+    expect(model.getTile(2, 1)?.getBehaviors()).toEqual([behaviors[0]]);
+    expect(model.getTile(2, 3)?.getBehaviors()).toEqual([behaviors[0]]);
+    expect(behaviorInheritanceRandomSource).toHaveBeenCalled();
   });
 
   it("builds the selected team's clipped range from empty tiles only", () => {
-    const model = new MapModel(5, 5, teamResolver);
+    const model = new MapModel(5, 5, { teamResolver });
     const essence = new StaticEssence();
 
     model.setCellAlive(

@@ -45,6 +45,7 @@ describe("GenerationMerger", () => {
       playerId,
       teamId,
       parentIndices: [1],
+      parentContributions: [{ index: 1, paidPoints: 1 }],
       rotation: 0,
     };
   }

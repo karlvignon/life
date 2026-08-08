@@ -66,15 +66,15 @@ describe("TreeEssence", () => {
       [2, 3],
       [1, 2],
     ]) {
-      const tile = model.getTile(x, y);
-      expect(tile?.getModifiers()).toHaveLength(1);
-      expect(
-        applyModifiers(weatherForCycle(1), tile?.getModifiers() ?? []).degrees,
-      ).toBe(25 + TREE_NEIGHBOR_DEGREES_MODIFIER);
+      const modifiers = model.getModifiers(x, y);
+      expect(modifiers).toHaveLength(1);
+      expect(applyModifiers(weatherForCycle(1), modifiers).degrees).toBe(
+        25 + TREE_NEIGHBOR_DEGREES_MODIFIER,
+      );
     }
 
-    expect(model.getTile(2, 2)?.getModifiers()).toHaveLength(0);
-    expect(model.getTile(1, 1)?.getModifiers()).toHaveLength(0);
+    expect(model.getModifiers(2, 2)).toHaveLength(0);
+    expect(model.getModifiers(1, 1)).toHaveLength(0);
   });
 
   it("does not reapply birth modifiers to an already living tree", () => {
@@ -84,7 +84,7 @@ describe("TreeEssence", () => {
     setTestCellAlive(model, 2, 2, tree);
     setTestCellAlive(model, 2, 2, tree);
 
-    expect(model.getTile(2, 1)?.getModifiers()).toHaveLength(1);
+    expect(model.getModifiers(2, 1)).toHaveLength(1);
   });
 
   it("stacks modifiers from different tree cells", () => {
@@ -93,12 +93,11 @@ describe("TreeEssence", () => {
     setTestCellAlive(model, 1, 2, tree);
     setTestCellAlive(model, 3, 2, tree);
 
-    const sharedNeighbor = model.getTile(2, 2);
-    expect(sharedNeighbor?.getModifiers()).toHaveLength(2);
-    expect(
-      applyModifiers(weatherForCycle(1), sharedNeighbor?.getModifiers() ?? [])
-        .degrees,
-    ).toBe(25 + TREE_NEIGHBOR_DEGREES_MODIFIER * 2);
+    const modifiers = model.getModifiers(2, 2);
+    expect(modifiers).toHaveLength(2);
+    expect(applyModifiers(weatherForCycle(1), modifiers).degrees).toBe(
+      25 + TREE_NEIGHBOR_DEGREES_MODIFIER * 2,
+    );
   });
 
   it("removes only the modifiers authored by a replaced tree", () => {
@@ -109,12 +108,11 @@ describe("TreeEssence", () => {
 
     setTestCellAlive(model, 1, 2, new StaticEssence());
 
-    const sharedNeighbor = model.getTile(2, 2);
-    expect(sharedNeighbor?.getModifiers()).toHaveLength(1);
-    expect(
-      applyModifiers(weatherForCycle(1), sharedNeighbor?.getModifiers() ?? [])
-        .degrees,
-    ).toBe(25 + TREE_NEIGHBOR_DEGREES_MODIFIER);
+    const modifiers = model.getModifiers(2, 2);
+    expect(modifiers).toHaveLength(1);
+    expect(applyModifiers(weatherForCycle(1), modifiers).degrees).toBe(
+      25 + TREE_NEIGHBOR_DEGREES_MODIFIER,
+    );
   });
 
   it("passes the tile's modified weather to its living essence", () => {
@@ -152,7 +150,7 @@ describe("TreeEssence", () => {
     model.step(1, weatherForCycle(1));
 
     expect(model.getTile(2, 2)?.isAlive()).toBe(false);
-    expect(model.getTile(2, 1)?.getModifiers()).toHaveLength(0);
+    expect(model.getModifiers(2, 1)).toHaveLength(0);
   });
 
   it("ignores neighbor modifiers outside the grid", () => {
@@ -160,10 +158,10 @@ describe("TreeEssence", () => {
     setTestCellAlive(model, 0, 0, new TreeEssence());
 
     const modifierCount = [
-      model.getTile(1, 0),
-      model.getTile(0, 1),
-      model.getTile(1, 1),
-    ].reduce((total, tile) => total + (tile?.getModifiers().length ?? 0), 0);
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ].reduce((total, [x, y]) => total + model.getModifiers(x, y).length, 0);
 
     expect(modifierCount).toBe(2);
   });
@@ -174,12 +172,9 @@ describe("TreeEssence", () => {
 
     model.resize(6, 6);
 
-    expect(model.getTile(2, 1)?.getModifiers()).toHaveLength(1);
+    expect(model.getModifiers(2, 1)).toHaveLength(1);
     expect(
-      applyModifiers(
-        weatherForCycle(1),
-        model.getTile(2, 1)?.getModifiers() ?? [],
-      ).degrees,
+      applyModifiers(weatherForCycle(1), model.getModifiers(2, 1)).degrees,
     ).toBe(25 + TREE_NEIGHBOR_DEGREES_MODIFIER);
   });
 });

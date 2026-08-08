@@ -4,26 +4,33 @@ import { Tile } from "../Tile";
 import { BlindSeeding } from "./BlindSeeding";
 import { BehaviorInheritanceModel } from "./BehaviorInheritanceModel";
 import { SeedRange } from "./SeedRange";
-import { TileBehavior } from "./TileBehavior";
+import { BehaviorInheritanceScore, TileBehavior } from "./TileBehavior";
 
 class TestBehavior extends TileBehavior {
   constructor(
     readonly id: string,
-    readonly inheritable: boolean,
+    readonly inheritableScore: number,
   ) {
     super();
+  }
+
+  protected withInheritanceScore(score: number): TileBehavior {
+    return new TestBehavior(this.id, score);
   }
 }
 
 describe("BehaviorInheritanceModel", () => {
-  it("inherits every inheritable behavior from the parent paying the most", () => {
+  it("inherits every transmissible behavior from the parent paying the most", () => {
     const randomSource = vi.fn(() => 0);
     const model = new BehaviorInheritanceModel({
       paymentTieBreakerRandomSource: randomSource,
     });
     const newborn = createCell(0, 0);
     const inheritedRange = new SeedRange(4);
-    const inheritedCustomBehavior = new TestBehavior("custom", true);
+    const inheritedCustomBehavior = new TestBehavior(
+      "custom",
+      BehaviorInheritanceScore.INFINITE,
+    );
     const excludedBehavior = new BlindSeeding();
     const mainContributor = createCell(1, 0, [
       inheritedRange,
@@ -42,6 +49,23 @@ describe("BehaviorInheritanceModel", () => {
       inheritedCustomBehavior,
     ]);
     expect(randomSource).not.toHaveBeenCalled();
+  });
+
+  it("decrements a finite inheritance score without removing the child behavior", () => {
+    const model = new BehaviorInheritanceModel();
+    const parent = createCell(1, 0, [new TestBehavior("finite", 1)]);
+    const child = createCell(0, 0);
+
+    model.inheritBehaviors(child, [{ cell: parent, paidPoints: 1 }]);
+
+    expect(child.getBehaviors()).toHaveLength(1);
+    expect(child.getBehaviors()[0].inheritableScore).toBe(
+      BehaviorInheritanceScore.NONE,
+    );
+
+    const grandchild = createCell(0, 1);
+    model.inheritBehaviors(grandchild, [{ cell: child, paidPoints: 1 }]);
+    expect(grandchild.getBehaviors()).toEqual([]);
   });
 
   it("randomly chooses one parent when their payments are equal", () => {

@@ -60,6 +60,7 @@ export const patternCatalog = new PatternCatalog([
     encoding: "x=5;y=5;cells=0011101001100011001011100",
   },
   { id: "cell", encoding: "x=1;y=1;cells=1" },
+  { id: "vitality-mushroom", encoding: "x=1;y=1;cells=1" },
   { id: "horizontal-line", encoding: "x=3;y=1;cells=111" },
   { id: "five-cell-cross", encoding: "x=3;y=3;cells=010111010" },
   { id: "mushroom-birth", encoding: "x=3;y=3;cells=010101010" },

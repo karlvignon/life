@@ -1,8 +1,10 @@
 import type { Essence, EssencePropertiesDelta } from "./essences/Essence";
-import { Modifier, type ModifierAuthor } from "./modifiers/Modifier";
 import { TileData, type TileDataProperties } from "./TileData";
 import type { TileProvenance, TileSnapshot } from "../types";
-import type { TileBehavior } from "./behaviors/TileBehavior";
+import {
+  type TileBehavior,
+  validateInheritanceScore,
+} from "./behaviors/TileBehavior";
 import type { PlaceableRotation } from "./Placeable";
 
 export interface LivingTileState {
@@ -11,15 +13,18 @@ export interface LivingTileState {
   readonly provenance: TileProvenance;
   readonly behaviors?: ReadonlyArray<TileBehavior>;
   readonly rotation?: PlaceableRotation;
+  readonly lifeId?: string;
 }
 
 export class Tile {
   private essence: Essence | null = null;
   private data: TileData | null = null;
   private provenance: TileProvenance | null = null;
-  private modifiers: Modifier[] = [];
   private behaviors: TileBehavior[] = [];
   private rotation: PlaceableRotation = 0;
+  /** Identifie l'incarnation actuelle, indépendamment de la position de la tuile. */
+  private lifeId: string | null = null;
+  private lifeSequence = 0;
 
   constructor(
     public readonly x: number,
@@ -46,8 +51,8 @@ export class Tile {
     return this.rotation;
   }
 
-  getModifiers(): ReadonlyArray<Modifier> {
-    return this.modifiers;
+  getLifeId(): string | null {
+    return this.lifeId;
   }
 
   getBehaviors(): ReadonlyArray<TileBehavior> {
@@ -94,20 +99,6 @@ export class Tile {
     this.behaviors = [...behaviors];
   }
 
-  addModifier(modifier: Modifier): void {
-    this.modifiers.push(modifier);
-  }
-
-  removeModifiersAuthoredBy(author: ModifierAuthor): void {
-    this.modifiers = this.modifiers.filter(
-      (modifier) => !modifier.isAuthoredBy(author),
-    );
-  }
-
-  clearModifiers(): void {
-    this.modifiers = [];
-  }
-
   apply(delta: EssencePropertiesDelta): void {
     if (!this.data) {
       return;
@@ -120,10 +111,22 @@ export class Tile {
     if (!state.provenance.playerId.trim()) {
       throw new RangeError("tile owner player id must not be empty");
     }
+    if (state.lifeId !== undefined && !state.lifeId.trim()) {
+      throw new RangeError("tile life id must not be empty");
+    }
 
     const shouldInitialize = !this.isAlive() || this.essence !== state.essence;
     this.essence = state.essence;
     this.provenance = Object.freeze({ ...state.provenance });
+
+    if (shouldInitialize) {
+      this.lifeId =
+        state.lifeId ?? `${this.x}:${this.y}:${++this.lifeSequence}`;
+    } else if (state.lifeId !== undefined && state.lifeId !== this.lifeId) {
+      throw new Error(
+        "cannot replace a living tile life id without a new life",
+      );
+    }
 
     if (state.properties) {
       this.data = new TileData(state.properties);
@@ -150,6 +153,7 @@ export class Tile {
     this.provenance = null;
     this.behaviors = [];
     this.rotation = 0;
+    this.lifeId = null;
   }
 
   toSnapshot(): TileSnapshot {
@@ -162,6 +166,7 @@ export class Tile {
       provenance: this.provenance,
       behaviors: [...this.behaviors],
       rotation: this.rotation,
+      lifeId: this.lifeId,
     };
   }
 }
@@ -170,4 +175,5 @@ function validateBehavior(behavior: TileBehavior): void {
   if (!behavior.id.trim()) {
     throw new RangeError("tile behavior id must not be empty");
   }
+  validateInheritanceScore(behavior.inheritableScore);
 }

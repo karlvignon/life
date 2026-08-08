@@ -136,7 +136,7 @@ export class TileInfoView extends Container {
     this.visible = false;
   }
 
-  setTile(tile: Tile | null): void {
+  setTile(tile: Tile | null, modifiers: ReadonlyArray<Modifier> = []): void {
     if (!tile) {
       this.visible = false;
       return;
@@ -145,8 +145,6 @@ export class TileInfoView extends Container {
     const snapshot = tile.toSnapshot();
     const essence = snapshot.alive ? snapshot.essence : null;
     const accentColor = essence?.color ?? EMPTY_ACCENT;
-    const modifiers = tile.getModifiers();
-
     this.titleText.text = essence?.name ?? "Empty cell";
     this.coordinatesText.text = `X ${snapshot.x}   ·   Y ${snapshot.y}`;
 

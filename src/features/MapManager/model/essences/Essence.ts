@@ -6,8 +6,11 @@ import {
   type TileDataDelta,
   type TileDataProperties,
 } from "../TileData";
-import type { ModifierDefinition } from "../modifiers/Modifier";
 import type { PlaceableRotation } from "../Placeable";
+import {
+  type TileBehavior,
+  validateInheritanceScore,
+} from "../behaviors/TileBehavior";
 
 export interface EssenceEvolutionInput {
   readonly bounds: GridBounds;
@@ -50,11 +53,6 @@ export interface EssenceEvolutionResult {
 export type EssencePropertiesDelta = TileDataDelta;
 export type EssenceProperties = TileDataProperties;
 
-export interface BirthModifierDefinition extends ModifierDefinition {
-  readonly offsetX: number;
-  readonly offsetY: number;
-}
-
 export interface EssenceDefinition {
   readonly id: EssenceId;
   /** Groupe de cellules compatibles pour les règles d'évolution. */
@@ -67,7 +65,7 @@ export interface EssenceDefinition {
   readonly reproductionCost?: number;
   readonly evolutionBehaviors?: ReadonlyArray<EvolutionBehavior>;
   readonly weatherBehaviors?: ReadonlyArray<WeatherBehavior>;
-  readonly birthModifiers?: ReadonlyArray<BirthModifierDefinition>;
+  readonly lifecycleBehaviors?: ReadonlyArray<TileBehavior>;
 }
 
 const DEFAULT_PROPERTIES: TileDataProperties = Object.freeze({
@@ -88,7 +86,7 @@ export class Essence {
   private readonly reproductionCost: number;
   private readonly evolutionBehaviors: ReadonlyArray<EvolutionBehavior>;
   private readonly weatherBehaviors: ReadonlyArray<WeatherBehavior>;
-  private readonly birthModifiers: ReadonlyArray<BirthModifierDefinition>;
+  private readonly lifecycleBehaviors: ReadonlyArray<TileBehavior>;
 
   constructor(definition: EssenceDefinition) {
     validateDefinition(definition);
@@ -107,7 +105,9 @@ export class Essence {
     this.weatherBehaviors = Object.freeze([
       ...(definition.weatherBehaviors ?? []),
     ]);
-    this.birthModifiers = Object.freeze([...(definition.birthModifiers ?? [])]);
+    this.lifecycleBehaviors = Object.freeze([
+      ...(definition.lifecycleBehaviors ?? []),
+    ]);
   }
 
   getInitialProperties(): EssenceProperties {
@@ -122,8 +122,8 @@ export class Essence {
     return this.reproductionCost;
   }
 
-  getBirthModifiers(): ReadonlyArray<BirthModifierDefinition> {
-    return this.birthModifiers;
+  getLifecycleBehaviors(): ReadonlyArray<TileBehavior> {
+    return this.lifecycleBehaviors;
   }
 
   getWeatherRepercussion(
@@ -214,6 +214,10 @@ function validateDefinition(definition: EssenceDefinition): void {
 
   validateUniqueBehaviorIds(definition.evolutionBehaviors ?? [], "evolution");
   validateUniqueBehaviorIds(definition.weatherBehaviors ?? [], "weather");
+  validateUniqueBehaviorIds(definition.lifecycleBehaviors ?? [], "lifecycle");
+  for (const behavior of definition.lifecycleBehaviors ?? []) {
+    validateInheritanceScore(behavior.inheritableScore);
+  }
 }
 
 function validateUniqueBehaviorIds(

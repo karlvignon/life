@@ -3,6 +3,7 @@ import type { WeatherSnapshot } from "../../core/types/weather";
 import type { PlayerId } from "../../core/types/player";
 import type { TeamId, TeamResolver } from "../../core/types/team";
 import type { Essence } from "./model/essences/Essence";
+import { essenceCatalog } from "./model/essences/EssenceCatalog";
 import {
   BLIND_SEEDING_BEHAVIOR_ID,
   BlindSeeding,
@@ -23,6 +24,15 @@ import { computeNextGeneration } from "./model/evolution/EvolutionEngine";
 import { LivingCellRegistry } from "./model/LivingCellRegistry";
 import { Tile } from "./model/Tile";
 import { applyModifiers, Modifier } from "./model/modifiers/Modifier";
+import { ModifierRegistry } from "./model/modifiers/ModifierRegistry";
+import { LifecycleHookRunner } from "./model/lifecycle/LifecycleHookRunner";
+import type {
+  BirthCause,
+  DeathCause,
+  HookTileSnapshot,
+  MapQuery,
+  SourcedMapEffect,
+} from "./model/lifecycle/types";
 import type { TileProvenance, TileSnapshot } from "./types";
 import type { PlaceableRotation } from "./model/Placeable";
 import {
@@ -38,6 +48,7 @@ import {
 export interface MapModelConfig {
   readonly teamResolver?: TeamResolver;
   readonly behaviorInheritance?: BehaviorInheritance;
+  readonly essenceResolver?: (essenceId: string) => Essence;
 }
 
 export class MapModel {
@@ -45,12 +56,14 @@ export class MapModel {
   private _gridHeight: number;
   private tiles: Tile[][] = [];
   private readonly registry = new LivingCellRegistry();
-  private readonly modifierTargetsByEssence = new Map<
-    Essence,
-    Map<string, Tile[]>
-  >();
+  private readonly modifierRegistry = new ModifierRegistry();
+  private readonly lifecycleHookRunner = new LifecycleHookRunner();
+  private readonly effectQueue: SourcedMapEffect[] = [];
   private readonly teamResolver?: TeamResolver;
   private readonly behaviorInheritance: BehaviorInheritance;
+  private readonly essenceResolver: (essenceId: string) => Essence;
+  private currentCycle = 0;
+  private nextLifeSequence = 0;
   private renderRevision = 0;
 
   constructor(
@@ -63,6 +76,8 @@ export class MapModel {
     this.teamResolver = config.teamResolver;
     this.behaviorInheritance =
       config.behaviorInheritance ?? new BehaviorInheritanceModel();
+    this.essenceResolver =
+      config.essenceResolver ?? ((essenceId) => essenceCatalog.get(essenceId));
     this.initGrid();
   }
 
@@ -90,17 +105,17 @@ export class MapModel {
     return this.tiles[y][x];
   }
 
+  getModifiers(x: number, y: number): ReadonlyArray<Modifier> {
+    return this.modifierRegistry.getAt(x, y);
+  }
+
   getLivingCells(): Tile[] {
-    const living: Tile[] = [];
-
-    this.registry.forEach((_index, _essence, x, y) => {
+    return this.registry.snapshot().flatMap(({ index }) => {
+      const x = index % this._gridWidth;
+      const y = Math.floor(index / this._gridWidth);
       const tile = this.getTile(x, y);
-      if (tile?.isAlive()) {
-        living.push(tile);
-      }
-    }, this._gridWidth);
-
-    return living;
+      return tile?.isAlive() ? [tile] : [];
+    });
   }
 
   getLivingSnapshots(): TileSnapshot[] {
@@ -134,11 +149,21 @@ export class MapModel {
     const previousEssence = tile.getEssence();
     const previousPlayerId = tile.getProvenance()?.playerId;
 
+    let hookChanges = emptyChangeSet();
     if (wasAlive && previousEssence && previousEssence !== essence) {
-      this.removeModifiersAuthoredBy(x, y, previousEssence);
+      this.transitionToDeath(tile, "replacement");
     }
 
-    tile.makeAlive({ essence, provenance, behaviors, rotation });
+    tile.makeAlive({
+      essence,
+      provenance,
+      behaviors,
+      rotation,
+      lifeId:
+        !wasAlive || previousEssence !== essence
+          ? this.createLifeId()
+          : undefined,
+    });
     this.registry.set(index, essence);
 
     const visualStateChanged =
@@ -147,25 +172,27 @@ export class MapModel {
       previousPlayerId !== provenance.playerId;
 
     if (!wasAlive || previousEssence !== essence) {
-      this.applyBirthModifiers(x, y, essence);
+      this.enqueueBirthHooks(
+        tile,
+        provenance.kind === "player-placement"
+          ? "player-placement"
+          : "simulation",
+      );
+      hookChanges = this.drainEffectQueue();
     }
 
     if (!visualStateChanged) {
-      return emptyChangeSet();
+      return hookChanges;
     }
 
     this.renderRevision++;
 
-    return {
-      changes: [
-        {
-          x,
-          y,
-          alive: true,
-          essence,
-        },
-      ],
-    };
+    return mergeChangeSets(
+      {
+        changes: [{ x, y, alive: true, essence }],
+      },
+      hookChanges,
+    );
   }
 
   placeCells(
@@ -180,6 +207,7 @@ export class MapModel {
     }
 
     const changes: CellChange[] = [];
+    const newborns: Array<{ tile: Tile; cause: BirthCause }> = [];
 
     for (const { x, y } of cells) {
       const tile = this.getTile(x, y);
@@ -192,11 +220,16 @@ export class MapModel {
       const previousEssence = tile.getEssence();
       const previousPlayerId = tile.getProvenance()?.playerId;
 
-      if (wasAlive && previousEssence && previousEssence !== essence) {
-        this.removeModifiersAuthoredBy(x, y, previousEssence);
-      }
-
-      tile.makeAlive({ essence, provenance, behaviors, rotation });
+      tile.makeAlive({
+        essence,
+        provenance,
+        behaviors,
+        rotation,
+        lifeId:
+          !wasAlive || previousEssence !== essence
+            ? this.createLifeId()
+            : undefined,
+      });
       this.registry.set(index, essence);
 
       const visualStateChanged =
@@ -205,18 +238,29 @@ export class MapModel {
         previousPlayerId !== provenance.playerId;
 
       if (!wasAlive || previousEssence !== essence) {
-        this.applyBirthModifiers(x, y, essence);
+        newborns.push({
+          tile,
+          cause:
+            provenance.kind === "player-placement"
+              ? "player-placement"
+              : "simulation",
+        });
       }
       if (visualStateChanged) {
         changes.push({ x, y, alive: true, essence });
       }
     }
 
-    if (changes.length > 0) {
+    for (const { tile: newborn, cause } of newborns) {
+      this.enqueueBirthHooks(newborn, cause);
+    }
+    const hookChanges = this.drainEffectQueue();
+
+    if (changes.length > 0 || hookChanges.changes.length > 0) {
       this.renderRevision++;
     }
 
-    return { changes };
+    return mergeChangeSets({ changes }, hookChanges);
   }
 
   canPlaceCells(
@@ -285,15 +329,17 @@ export class MapModel {
 
     this.registry.forEach((_index, _essence, x, y) => {
       const tile = this.getTile(x, y);
-      const essence = tile?.getEssence();
-      if (essence) {
-        this.removeModifiersAuthoredBy(x, y, essence);
+      const lifeId = tile?.getLifeId();
+      if (lifeId) {
+        this.modifierRegistry.removeSource(lifeId);
       }
       tile?.kill();
       changes.push({ x, y, alive: false, essence: null });
     }, this._gridWidth);
 
     this.registry.clear();
+    this.effectQueue.length = 0;
+    this.modifierRegistry.clear();
 
     if (changes.length > 0) {
       this.renderRevision++;
@@ -303,7 +349,19 @@ export class MapModel {
   }
 
   setLivingCells(cells: TileSnapshot[]): CellChangeSet {
+    const restoredLifeIds = new Set<string>();
+    for (const cell of cells) {
+      if (!cell.alive || !cell.lifeId) {
+        continue;
+      }
+      if (restoredLifeIds.has(cell.lifeId)) {
+        throw new RangeError(`Duplicate tile life id: ${cell.lifeId}`);
+      }
+      restoredLifeIds.add(cell.lifeId);
+    }
+
     const clearChanges = this.clearLivingCells();
+    this.modifierRegistry.clear();
     const placeChanges: CellChange[] = [];
 
     for (const cell of cells) {
@@ -327,9 +385,10 @@ export class MapModel {
         provenance: cell.provenance,
         behaviors: cell.behaviors,
         rotation: cell.rotation,
+        lifeId: cell.lifeId ?? this.createLifeId(),
       });
+      this.observeLifeId(cell.lifeId);
       this.registry.set(index, cell.essence);
-      this.applyBirthModifiers(cell.x, cell.y, cell.essence);
       placeChanges.push({
         x: cell.x,
         y: cell.y,
@@ -358,6 +417,17 @@ export class MapModel {
       throw new RangeError("weather cycle must match currentCycle");
     }
 
+    this.currentCycle = currentCycle;
+    this.modifierRegistry.expireBeforeCycle(currentCycle);
+
+    // Le snapshot de début de cycle empêche les naissances causées par un hook
+    // de recevoir onCycle avant le cycle suivant.
+    const cycleStartTiles = this.getLivingCells();
+    for (const tile of cycleStartTiles) {
+      this.enqueueCycleHooks(tile, weather);
+    }
+    let lifecycleChanges = this.drainEffectQueue();
+
     const living = this.registry.snapshot().map(({ index, essence }) => {
       const x = index % this._gridWidth;
       const y = Math.floor(index / this._gridWidth);
@@ -383,7 +453,10 @@ export class MapModel {
     });
 
     if (living.length === 0) {
-      return emptyChangeSet();
+      if (lifecycleChanges.changes.length > 0) {
+        this.renderRevision++;
+      }
+      return lifecycleChanges;
     }
 
     const {
@@ -445,6 +518,7 @@ export class MapModel {
         properties,
         provenance: { kind: "simulation-birth", playerId },
         rotation: newbornRotations.get(change.index) ?? 0,
+        lifeId: this.createLifeId(),
       });
       this.behaviorInheritance.inheritBehaviors(
         tile,
@@ -459,7 +533,7 @@ export class MapModel {
           return { cell: parentCell, paidPoints };
         }),
       );
-      this.applyBirthModifiers(change.x, change.y, change.nextEssence);
+      this.enqueueBirthHooks(tile, "simulation");
     }
 
     for (const change of evolutionChanges) {
@@ -473,13 +547,16 @@ export class MapModel {
         );
       }
 
-      this.removeModifiersAuthoredBy(
-        change.x,
-        change.y,
-        change.previousEssence,
-      );
-      this.getTile(change.x, change.y)?.kill();
+      const tile = this.getTile(change.x, change.y);
+      if (tile) {
+        this.transitionToDeath(tile, "evolution");
+      }
     }
+
+    lifecycleChanges = mergeChangeSets(
+      lifecycleChanges,
+      this.drainEffectQueue(),
+    );
 
     // Phase 2 : chaque cellule applique indépendamment les répercussions météo,
     // après que toutes les naissances et morts d'évolution ont été appliquées.
@@ -491,7 +568,7 @@ export class MapModel {
 
       tile.apply(
         essence.getWeatherRepercussion(
-          applyModifiers(weather, tile.getModifiers()),
+          applyModifiers(weather, this.getModifiers(x, y)),
         ),
       );
     }, this._gridWidth);
@@ -512,15 +589,16 @@ export class MapModel {
     );
 
     for (const change of weatherDeathChanges) {
-      if (change.previousEssence) {
-        this.removeModifiersAuthoredBy(
-          change.x,
-          change.y,
-          change.previousEssence,
-        );
+      const tile = this.getTile(change.x, change.y);
+      if (tile) {
+        this.transitionToDeath(tile, "weather");
       }
-      this.getTile(change.x, change.y)?.kill();
     }
+
+    lifecycleChanges = mergeChangeSets(
+      lifecycleChanges,
+      this.drainEffectQueue(),
+    );
 
     const changeSet = mergeChangeSets(
       {
@@ -540,12 +618,13 @@ export class MapModel {
         })),
       },
     );
+    const completeChangeSet = mergeChangeSets(changeSet, lifecycleChanges);
 
-    if (changeSet.changes.length > 0) {
+    if (completeChangeSet.changes.length > 0) {
       this.renderRevision++;
     }
 
-    return changeSet;
+    return completeChangeSet;
   }
 
   createRenderSnapshot(
@@ -630,11 +709,22 @@ export class MapModel {
 
     const previousLiving = this.getLivingSnapshots();
 
+    for (const snapshot of previousLiving) {
+      if (
+        snapshot.lifeId &&
+        (snapshot.x < 0 ||
+          snapshot.x >= gridWidth ||
+          snapshot.y < 0 ||
+          snapshot.y >= gridHeight)
+      ) {
+        this.modifierRegistry.removeSource(snapshot.lifeId);
+      }
+    }
+
     this._gridWidth = gridWidth;
     this._gridHeight = gridHeight;
     this.initGrid();
     this.registry.clear();
-    this.modifierTargetsByEssence.clear();
 
     for (const snapshot of previousLiving) {
       const tile = this.getTile(snapshot.x, snapshot.y);
@@ -649,14 +739,13 @@ export class MapModel {
           provenance: snapshot.provenance,
           behaviors: snapshot.behaviors,
           rotation: snapshot.rotation,
+          lifeId: snapshot.lifeId ?? undefined,
         });
         this.registry.set(index, snapshot.essence);
       }
     }
 
-    this.registry.forEach((_index, essence, x, y) => {
-      this.applyBirthModifiers(x, y, essence);
-    }, this._gridWidth);
+    this.modifierRegistry.pruneTargets((x, y) => this.isInBounds(x, y));
 
     this.renderRevision++;
 
@@ -736,76 +825,294 @@ export class MapModel {
     return coveredIndices;
   }
 
-  private applyBirthModifiers(x: number, y: number, essence: Essence): void {
-    const definitions = essence.getBirthModifiers();
-    if (definitions.length === 0) {
+  private enqueueBirthHooks(tile: Tile, cause: BirthCause): void {
+    const snapshot = this.createHookSnapshot(tile);
+    const essence = tile.getEssence();
+    if (!snapshot || !essence) {
       return;
     }
-
-    const author = Object.freeze({ x, y, essence });
-    const targets: Tile[] = [];
-
-    for (const definition of definitions) {
-      const target = this.getTile(
-        x + definition.offsetX,
-        y + definition.offsetY,
-      );
-      if (!target) {
-        continue;
-      }
-
-      target.addModifier(
-        new Modifier(
-          author,
-          definition.property,
-          definition.mode,
-          definition.value,
-        ),
-      );
-      targets.push(target);
-    }
-
-    if (targets.length === 0) {
-      return;
-    }
-
-    let targetsByAuthor = this.modifierTargetsByEssence.get(essence);
-    if (!targetsByAuthor) {
-      targetsByAuthor = new Map<string, Tile[]>();
-      this.modifierTargetsByEssence.set(essence, targetsByAuthor);
-    }
-    targetsByAuthor.set(this.getModifierAuthorKey(x, y), targets);
+    this.effectQueue.push(
+      ...this.lifecycleHookRunner.run(
+        "birth",
+        essence,
+        this.getLifecycleBehaviors(tile, essence),
+        {
+          cycle: this.currentCycle,
+          cause,
+          self: snapshot,
+          map: this.createMapQuery(),
+        },
+      ),
+    );
   }
 
-  private removeModifiersAuthoredBy(
-    x: number,
-    y: number,
-    essence: Essence,
+  private enqueueCycleHooks(
+    tile: Tile,
+    weather: Readonly<WeatherSnapshot>,
   ): void {
-    const targetsByAuthor = this.modifierTargetsByEssence.get(essence);
-    if (!targetsByAuthor) {
+    const snapshot = this.createHookSnapshot(tile);
+    const essence = tile.getEssence();
+    if (!snapshot || !essence) {
       return;
     }
+    this.effectQueue.push(
+      ...this.lifecycleHookRunner.run(
+        "cycle",
+        essence,
+        this.getLifecycleBehaviors(tile, essence),
+        {
+          cycle: this.currentCycle,
+          weather,
+          self: snapshot,
+          map: this.createMapQuery(),
+        },
+      ),
+    );
+  }
 
-    const authorKey = this.getModifierAuthorKey(x, y);
-    const targets = targetsByAuthor.get(authorKey);
-    if (!targets) {
+  private enqueueDeathHooks(tile: Tile, cause: DeathCause): void {
+    const snapshot = this.createHookSnapshot(tile);
+    const essence = tile.getEssence();
+    if (!snapshot || !essence) {
       return;
     }
+    this.effectQueue.push(
+      ...this.lifecycleHookRunner.run(
+        "death",
+        essence,
+        this.getLifecycleBehaviors(tile, essence),
+        {
+          cycle: this.currentCycle,
+          cause,
+          self: snapshot,
+          map: this.createMapQuery(),
+        },
+      ),
+    );
+  }
 
-    const author = { x, y, essence };
-    for (const target of targets) {
-      target.removeModifiersAuthoredBy(author);
+  private getLifecycleBehaviors(
+    tile: Tile,
+    essence: Essence,
+  ): ReadonlyArray<TileBehavior> {
+    const behaviors = [
+      ...essence.getLifecycleBehaviors(),
+      ...tile.getBehaviors(),
+    ];
+    const ids = new Set<string>();
+    for (const behavior of behaviors) {
+      if (ids.has(behavior.id)) {
+        throw new RangeError(
+          `Duplicate lifecycle behavior on tile (${tile.x},${tile.y}): ${behavior.id}`,
+        );
+      }
+      ids.add(behavior.id);
+    }
+    return behaviors;
+  }
+
+  private transitionToDeath(tile: Tile, cause: DeathCause): void {
+    if (!tile.isAlive()) {
+      return;
+    }
+    const lifeId = tile.getLifeId();
+    this.enqueueDeathHooks(tile, cause);
+    if (lifeId) {
+      this.modifierRegistry.removeSource(lifeId);
+    }
+    this.registry.delete(packIndex(tile.x, tile.y, this._gridWidth));
+    tile.kill();
+  }
+
+  private drainEffectQueue(): CellChangeSet {
+    const changes: CellChange[] = [];
+    let processed = 0;
+    const maximumEffects = Math.max(
+      1_000,
+      this._gridWidth * this._gridHeight * 20,
+    );
+
+    while (this.effectQueue.length > 0) {
+      if (++processed > maximumEffects) {
+        this.effectQueue.length = 0;
+        throw new Error("lifecycle effect cascade exceeded its safety budget");
+      }
+      const sourcedEffect = this.effectQueue.shift()!;
+      const change = this.resolveEffect(sourcedEffect);
+      if (change) {
+        changes.push(change);
+      }
     }
 
-    targetsByAuthor.delete(authorKey);
-    if (targetsByAuthor.size === 0) {
-      this.modifierTargetsByEssence.delete(essence);
+    return { changes };
+  }
+
+  private resolveEffect({
+    source,
+    effect,
+  }: SourcedMapEffect): CellChange | null {
+    const target = this.getTile(effect.target.x, effect.target.y);
+    if (!target) {
+      return null;
+    }
+
+    switch (effect.type) {
+      case "spawn-essence": {
+        if (target.isAlive()) {
+          if ((effect.collision ?? "if-empty") === "if-empty") {
+            return null;
+          }
+          this.transitionToDeath(target, "replacement");
+        }
+
+        const essence = this.essenceResolver(effect.essenceId);
+        target.makeAlive({
+          essence,
+          provenance: { kind: "simulation-birth", playerId: source.playerId },
+          lifeId: this.createLifeId(),
+        });
+        this.registry.set(
+          packIndex(target.x, target.y, this._gridWidth),
+          essence,
+        );
+        this.enqueueBirthHooks(target, "hook");
+        return { x: target.x, y: target.y, alive: true, essence };
+      }
+      case "damage": {
+        if (!Number.isFinite(effect.amount) || effect.amount < 0) {
+          throw new RangeError("damage amount must be non-negative and finite");
+        }
+        if (!target.isAlive()) {
+          return null;
+        }
+        target.apply({ life: -effect.amount });
+        if (target.getData()?.hasPositiveLife()) {
+          return null;
+        }
+        this.transitionToDeath(target, "damage");
+        return {
+          x: target.x,
+          y: target.y,
+          alive: false,
+          essence: null,
+        };
+      }
+      case "heal": {
+        if (!Number.isFinite(effect.amount) || effect.amount < 0) {
+          throw new RangeError("heal amount must be non-negative and finite");
+        }
+        const data = target.getData();
+        if (!data) {
+          return null;
+        }
+        target.apply({
+          life: Math.min(effect.amount, data.getMaximumLife() - data.getLife()),
+        });
+        return null;
+      }
+      case "tile-data:add":
+        if (!Number.isFinite(effect.value)) {
+          throw new RangeError("tile data effect value must be finite");
+        }
+        target.apply({ [effect.property]: effect.value });
+        return null;
+      case "modifier:add": {
+        const lifetime = effect.lifetime ?? { type: "while-source-alive" };
+        if (
+          lifetime.type === "while-source-alive" &&
+          !this.isLifeAlive(source.lifeId)
+        ) {
+          return null;
+        }
+        this.modifierRegistry.add(
+          target.x,
+          target.y,
+          new Modifier(
+            {
+              x: source.x,
+              y: source.y,
+              essence: source.essence,
+              lifeId: source.lifeId,
+              behaviorId: source.behaviorId,
+              phase: source.phase,
+            },
+            effect.modifier.property,
+            effect.modifier.mode,
+            effect.modifier.value,
+            { key: effect.key, lifetime },
+          ),
+          this.currentCycle,
+        );
+        return null;
+      }
+      case "modifier:remove":
+        this.modifierRegistry.remove(
+          target.x,
+          target.y,
+          effect.key,
+          (effect.source ?? "self") === "self" ? source.lifeId : undefined,
+        );
+        return null;
     }
   }
 
-  private getModifierAuthorKey(x: number, y: number): string {
-    return `${x}:${y}`;
+  private isLifeAlive(lifeId: string): boolean {
+    return this.getLivingCells().some((tile) => tile.getLifeId() === lifeId);
+  }
+
+  private createMapQuery(): MapQuery {
+    return Object.freeze({
+      bounds: Object.freeze({
+        width: this._gridWidth,
+        height: this._gridHeight,
+      }),
+      getTile: (x: number, y: number) =>
+        this.createHookSnapshot(this.getTile(x, y)),
+      getLivingTiles: () =>
+        this.getLivingCells()
+          .map((tile) => this.createHookSnapshot(tile))
+          .filter((snapshot) => snapshot !== null),
+    });
+  }
+
+  private createHookSnapshot(tile: Tile | null): HookTileSnapshot | null {
+    const essence = tile?.getEssence();
+    const data = tile?.getData();
+    const provenance = tile?.getProvenance();
+    const lifeId = tile?.getLifeId();
+    if (!tile || !essence || !data || !provenance || !lifeId) {
+      return null;
+    }
+
+    return Object.freeze({
+      index: packIndex(tile.x, tile.y, this._gridWidth),
+      x: tile.x,
+      y: tile.y,
+      lifeId,
+      essenceId: essence.id,
+      data: Object.freeze(data.toProperties()),
+      provenance,
+      rotation: tile.getRotation(),
+      behaviorIds: Object.freeze(
+        [...essence.getLifecycleBehaviors(), ...tile.getBehaviors()].map(
+          ({ id }) => id,
+        ),
+      ),
+    });
+  }
+
+  private createLifeId(): string {
+    return `life:${++this.nextLifeSequence}`;
+  }
+
+  private observeLifeId(lifeId: string | null): void {
+    if (!lifeId?.startsWith("life:")) {
+      return;
+    }
+    const sequence = Number(lifeId.slice("life:".length));
+    if (Number.isSafeInteger(sequence) && sequence > this.nextLifeSequence) {
+      this.nextLifeSequence = sequence;
+    }
   }
 
   private isInBounds(x: number, y: number): boolean {

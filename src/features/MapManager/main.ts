@@ -59,7 +59,28 @@ export {
   BlindSeeding,
 } from "./model/behaviors/BlindSeeding";
 export { SEED_RANGE_BEHAVIOR_ID, SeedRange } from "./model/behaviors/SeedRange";
-export { TileBehavior } from "./model/behaviors/TileBehavior";
+export {
+  BehaviorInheritanceScore,
+  TileBehavior,
+  validateInheritanceScore,
+} from "./model/behaviors/TileBehavior";
+export {
+  LifecycleEffectsBehavior,
+  type LifecycleEffectsBehaviorDefinition,
+} from "./model/behaviors/LifecycleEffectsBehavior";
+export type {
+  BirthCause,
+  BirthHookContext,
+  CycleHookContext,
+  DeathCause,
+  DeathHookContext,
+  EffectSource,
+  HookTileSnapshot,
+  LifecyclePhase,
+  MapEffect,
+  MapPosition,
+  MapQuery,
+} from "./model/lifecycle/types";
 export {
   BehaviorInheritanceModel,
   type BehaviorInheritance,
@@ -128,7 +149,9 @@ export {
   Modifier,
   type ModifierAuthor,
   type ModifierDefinition,
+  type ModifierLifetime,
   type ModifierMode,
+  type ModifierOptions,
   type WeatherProperty,
 } from "./model/modifiers/Modifier";
 export { EncodedPattern } from "./model/patterns/EncodedPattern";
@@ -279,7 +302,7 @@ export class MapManager {
     }
 
     if (this.tileInfoDirty) {
-      this.tileInfoUi.setTile(this.lastHoveredTile);
+      this.showTileInfo(this.lastHoveredTile);
       this.tileInfoDirty = false;
     }
   }
@@ -463,12 +486,19 @@ export class MapManager {
 
   private bindEvents(): void {
     this.eventManager.on("tile:hover", (tile) => {
-      this.tileInfoUi.setTile(tile);
+      this.showTileInfo(tile);
     });
 
     this.eventManager.on("tile:leave", () => {
       this.tileInfoUi.setTile(null);
     });
+  }
+
+  private showTileInfo(tile: Tile | null): void {
+    this.tileInfoUi.setTile(
+      tile,
+      tile && this.model ? this.model.getModifiers(tile.x, tile.y) : [],
+    );
   }
 
   private bindMapPointerEvents(): void {

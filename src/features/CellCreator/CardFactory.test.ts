@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { StaticEssence } from "../MapManager/main";
+import {
+  BehaviorInheritanceScore,
+  LifecycleEffectsBehavior,
+  StaticEssence,
+} from "../MapManager/main";
 import { CardFactory } from "./CardFactory";
 
 describe("CardFactory", () => {
@@ -33,5 +37,31 @@ describe("CardFactory", () => {
         staminaCost: 1,
       }),
     ).toThrow("Unknown essence family");
+  });
+
+  it("resolves lifecycle hooks declared by a card", () => {
+    const card = factory.create({
+      familyId: "static",
+      patternId: "cell",
+      label: "Volatile cell",
+      staminaCost: 2,
+      behaviors: [
+        {
+          type: "lifecycle-effects",
+          id: "volatile",
+          inheritableScore: BehaviorInheritanceScore.NONE,
+          onDeath: [
+            {
+              type: "damage",
+              target: { offsetX: 1, offsetY: 0 },
+              amount: 20,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(card.behaviors[0]).toBeInstanceOf(LifecycleEffectsBehavior);
+    expect(card.behaviors[0].id).toBe("volatile");
   });
 });

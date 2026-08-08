@@ -5,6 +5,7 @@ import {
   createCardId,
   getCardDefinition,
 } from "./cards";
+import { BehaviorInheritanceScore } from "./types/cards";
 
 describe("card definitions", () => {
   it("owns the selectable essence references", () => {
@@ -23,7 +24,7 @@ describe("card definitions", () => {
       createCardId(familyId, patternId),
     );
 
-    expect(ids).toHaveLength(32);
+    expect(ids).toHaveLength(33);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -49,6 +50,7 @@ describe("card definitions", () => {
     expect(idsFor("mushroom")).toEqual([
       "start",
       "cell",
+      "vitality-mushroom",
       "horizontal-line",
       "mushroom-birth",
       "mushroom-sprout",
@@ -84,10 +86,32 @@ describe("card definitions", () => {
           { type: "blind-seeding" },
         ]);
       } else {
-        expect(definition.behaviors).toEqual([
-          { type: "seed-range", value: 3 },
-        ]);
+        expect(definition.behaviors?.[0]).toEqual({
+          type: "seed-range",
+          value: 3,
+        });
       }
     }
+  });
+
+  it("declares VitalityMushroom as an infinitely transmissible one-cell birth hook", () => {
+    const definition = getCardDefinition("mushroom", "vitality-mushroom");
+    const behavior = definition?.behaviors?.[1];
+
+    expect(definition?.label).toBe("VitalityMushroom");
+    expect(behavior?.type).toBe("lifecycle-effects");
+    if (behavior?.type !== "lifecycle-effects") {
+      throw new Error("VitalityMushroom lifecycle behavior is missing");
+    }
+    expect(behavior.inheritableScore).toBe(BehaviorInheritanceScore.INFINITE);
+    expect(behavior.onBirth).toHaveLength(8);
+    expect(
+      behavior.onBirth?.every(
+        (effect) =>
+          effect.type === "tile-data:add" &&
+          effect.property === "reproducibility" &&
+          effect.value === 5,
+      ),
+    ).toBe(true);
   });
 });

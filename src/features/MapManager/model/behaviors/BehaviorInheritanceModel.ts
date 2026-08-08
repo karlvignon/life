@@ -56,7 +56,8 @@ export class BehaviorInheritanceModel implements BehaviorInheritance {
     newbornCell.setBehaviors(
       behaviorParent.cell
         .getBehaviors()
-        .filter((behavior) => behavior.inheritable),
+        .map((behavior) => behavior.inherit())
+        .filter((behavior) => behavior !== null),
     );
   }
 

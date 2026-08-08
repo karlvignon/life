@@ -25,6 +25,7 @@ export interface TileSnapshot {
   provenance: TileProvenance | null;
   behaviors: ReadonlyArray<TileBehavior>;
   rotation: PlaceableRotation;
+  lifeId: string | null;
 }
 
 export type HorizontalAlign = "start" | "center" | "end";

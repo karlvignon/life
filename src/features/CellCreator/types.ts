@@ -2,6 +2,8 @@ import type { Essence } from "../MapManager/main";
 import type { CardId, EssenceFamilyId } from "../../core/types/cards";
 import { GAME_COMMANDS } from "../../core/controls";
 
+export { BehaviorInheritanceScore } from "../../core/types/cards";
+
 export type {
   CardId,
   EssenceFamilyId,

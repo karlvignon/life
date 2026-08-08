@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BlindSeeding } from "./model/behaviors/BlindSeeding";
 import { SeedRange } from "./model/behaviors/SeedRange";
+import { BehaviorInheritanceScore } from "./model/behaviors/TileBehavior";
 import {
   createTileBehaviors,
   TileBehaviorFactory,
@@ -15,9 +16,11 @@ describe("TileBehaviorFactory", () => {
 
     expect(behaviors[0]).toBeInstanceOf(SeedRange);
     expect((behaviors[0] as SeedRange).value).toBe(4);
-    expect(behaviors[0].inheritable).toBe(true);
+    expect(behaviors[0].inheritableScore).toBe(
+      BehaviorInheritanceScore.INFINITE,
+    );
     expect(behaviors[1]).toBeInstanceOf(BlindSeeding);
-    expect(behaviors[1].inheritable).toBe(false);
+    expect(behaviors[1].inheritableScore).toBe(BehaviorInheritanceScore.NONE);
   });
 
   it("rejects duplicate creators", () => {

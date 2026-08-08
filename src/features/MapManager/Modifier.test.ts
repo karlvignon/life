@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { StaticEssence } from "./model/essences/StaticEssence";
 import { applyModifiers, Modifier } from "./model/modifiers/Modifier";
-import { Tile } from "./model/Tile";
+import { ModifierRegistry } from "./model/modifiers/ModifierRegistry";
 
 const weather = Object.freeze({
   cycle: 1,
@@ -29,13 +29,14 @@ describe("Modifier", () => {
     },
   );
 
-  it("applies a tile's modifier array in insertion order", () => {
-    const tile = new Tile(2, 1);
-    tile.addModifier(new Modifier(author, "degrees", "absolute", 10));
-    tile.addModifier(new Modifier(author, "degrees", "proportional", 0.5));
+  it("applies a target's modifiers in insertion order", () => {
+    const registry = new ModifierRegistry();
+    registry.add(2, 1, new Modifier(author, "degrees", "absolute", 10), 1);
+    registry.add(2, 1, new Modifier(author, "degrees", "proportional", 0.5), 1);
+    const modifiers = registry.getAt(2, 1);
 
-    expect(applyModifiers(weather, tile.getModifiers()).degrees).toBe(30);
-    expect(tile.getModifiers()).toHaveLength(2);
+    expect(applyModifiers(weather, modifiers).degrees).toBe(30);
+    expect(modifiers).toHaveLength(2);
   });
 
   it("rejects non-finite values", () => {

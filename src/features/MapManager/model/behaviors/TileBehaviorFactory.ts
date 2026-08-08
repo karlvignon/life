@@ -1,5 +1,6 @@
 import type { CardBehaviorDefinition } from "../../../../core/types/cards";
 import { BlindSeeding } from "./BlindSeeding";
+import { LifecycleEffectsBehavior } from "./LifecycleEffectsBehavior";
 import { SeedRange } from "./SeedRange";
 import type { TileBehavior } from "./TileBehavior";
 
@@ -21,6 +22,15 @@ const DEFAULT_CREATORS: ReadonlyArray<
     },
   ],
   ["blind-seeding", () => new BlindSeeding()],
+  [
+    "lifecycle-effects",
+    (definition) => {
+      if (definition.type !== "lifecycle-effects") {
+        throw new TypeError("lifecycle creator received another behavior");
+      }
+      return new LifecycleEffectsBehavior(definition);
+    },
+  ],
 ];
 
 /** Résout les définitions déclaratives des cartes en comportements de tile. */

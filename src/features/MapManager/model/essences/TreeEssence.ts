@@ -2,11 +2,9 @@ import {
   createPatternBirthBehavior,
   type BirthPattern,
 } from "../evolution/behaviors/PatternBirthBehavior";
-import {
-  Essence,
-  type BirthModifierDefinition,
-  type EssenceDefinition,
-} from "./Essence";
+import { Essence, type EssenceDefinition } from "./Essence";
+import { BehaviorInheritanceScore } from "../behaviors/TileBehavior";
+import { LifecycleEffectsBehavior } from "../behaviors/LifecycleEffectsBehavior";
 
 export const DEFAULT_TREE_COLOR = 0x16a34a;
 export const TREE_NEIGHBOR_DEGREES_MODIFIER = -2;
@@ -18,22 +16,25 @@ export const TREE_BIRTH_PATTERN: BirthPattern = Object.freeze([
   Object.freeze({ x: 1, y: 1 }),
 ]);
 
-const TEMPERATURE_MODIFIERS: ReadonlyArray<BirthModifierDefinition> =
-  Object.freeze(
-    [
-      { offsetX: 0, offsetY: -1 },
-      { offsetX: 1, offsetY: 0 },
-      { offsetX: 0, offsetY: 1 },
-      { offsetX: -1, offsetY: 0 },
-    ].map((offset) =>
-      Object.freeze({
-        ...offset,
-        property: "degrees" as const,
-        mode: "absolute" as const,
-        value: TREE_NEIGHBOR_DEGREES_MODIFIER,
-      }),
-    ),
-  );
+const TREE_TEMPERATURE_AURA = new LifecycleEffectsBehavior({
+  type: "lifecycle-effects",
+  id: "tree-temperature-aura",
+  inheritableScore: BehaviorInheritanceScore.NONE,
+  onBirth: [
+    { offsetX: 0, offsetY: -1 },
+    { offsetX: 1, offsetY: 0 },
+    { offsetX: 0, offsetY: 1 },
+    { offsetX: -1, offsetY: 0 },
+  ].map((target) => ({
+    type: "modifier:add" as const,
+    target,
+    key: "tree-neighbor-temperature",
+    property: "degrees" as const,
+    mode: "absolute" as const,
+    value: TREE_NEIGHBOR_DEGREES_MODIFIER,
+    lifetime: { type: "while-source-alive" as const },
+  })),
+});
 
 const TREE_EVOLUTION = createPatternBirthBehavior(
   "tree-diagonal-birth",
@@ -50,7 +51,7 @@ export class TreeEssence extends Essence {
       name: "Tree",
       color,
       evolutionBehaviors: [TREE_EVOLUTION],
-      birthModifiers: TEMPERATURE_MODIFIERS,
+      lifecycleBehaviors: [TREE_TEMPERATURE_AURA],
       ...overrides,
     });
   }

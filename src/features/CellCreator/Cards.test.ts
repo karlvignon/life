@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  BehaviorInheritanceScore,
   BlindSeeding,
   FloraEssence,
+  LifecycleEffectsBehavior,
   MushroomSproutEssence,
   SeedRange,
   StaticEssence,
@@ -91,32 +93,51 @@ describe("CellCreator cards", () => {
     expect(cards.map(({ id }) => id)).toEqual([
       "mushroom:start",
       "mushroom:cell",
+      "mushroom:vitality-mushroom",
       "mushroom:horizontal-line",
       "mushroom:mushroom-birth",
       "mushroom:mushroom-sprout",
     ]);
-    expect(cards[2]?.pattern.getCells()).toEqual([
+    const vitality = cards.find(
+      ({ id }) => id === "mushroom:vitality-mushroom",
+    );
+    const horizontal = cards.find(
+      ({ id }) => id === "mushroom:horizontal-line",
+    );
+    const birthPattern = cards.find(
+      ({ id }) => id === "mushroom:mushroom-birth",
+    );
+    const sprout = cards.find(({ id }) => id === "mushroom:mushroom-sprout");
+
+    expect(vitality?.label).toBe("VitalityMushroom");
+    expect(vitality?.pattern.getCells()).toEqual([{ x: 0, y: 0 }]);
+    expect(vitality?.behaviors[1]).toBeInstanceOf(LifecycleEffectsBehavior);
+    expect(vitality?.behaviors[1]?.inheritableScore).toBe(
+      BehaviorInheritanceScore.INFINITE,
+    );
+    expect(horizontal?.pattern.getCells()).toEqual([
       { x: 0, y: 0 },
       { x: 1, y: 0 },
       { x: 2, y: 0 },
     ]);
-    expect(cards[3]?.pattern.getCells()).toEqual([
+    expect(birthPattern?.pattern.getCells()).toEqual([
       { x: 1, y: 0 },
       { x: 0, y: 1 },
       { x: 2, y: 1 },
       { x: 1, y: 2 },
     ]);
-    expect(cards[4]?.pattern.getCells()).toEqual([
+    expect(sprout?.pattern.getCells()).toEqual([
       { x: 1, y: 1 },
       { x: 1, y: 2 },
     ]);
-    expect(cards[4]?.pattern.getBounds()).toEqual({ width: 3, height: 3 });
-    expect(cards[4]?.essence).toBeInstanceOf(MushroomSproutEssence);
-    expect(cards[4]?.essence.id).toBe("mushroom-sprout");
-    expect(cards[4]?.essence.getInitialProperties().reproducibility).toBe(7);
-    expect(cards[1]?.essence).toBe(cards[2]?.essence);
-    expect(cards[2]?.essence).toBe(cards[3]?.essence);
-    expect(cards[3]?.essence).not.toBe(cards[4]?.essence);
+    expect(sprout?.pattern.getBounds()).toEqual({ width: 3, height: 3 });
+    expect(sprout?.essence).toBeInstanceOf(MushroomSproutEssence);
+    expect(sprout?.essence.id).toBe("mushroom-sprout");
+    expect(sprout?.essence.getInitialProperties().reproducibility).toBe(7);
+    expect(vitality?.essence).toBe(cards[1]?.essence);
+    expect(horizontal?.essence).toBe(cards[1]?.essence);
+    expect(birthPattern?.essence).toBe(cards[1]?.essence);
+    expect(birthPattern?.essence).not.toBe(sprout?.essence);
   });
 
   it("gives Tree its existing cards and its birth pattern", () => {
@@ -172,7 +193,6 @@ describe("CellCreator cards", () => {
       ).toBe(true);
 
       for (const card of cards.filter((card) => card !== startCard)) {
-        expect(card.behaviors).toHaveLength(1);
         expect(card.behaviors[0]).toBeInstanceOf(SeedRange);
         expect((card.behaviors[0] as SeedRange).value).toBe(3);
       }
